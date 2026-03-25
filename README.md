@@ -223,6 +223,22 @@ make dev
 # → opens Vite dev server at http://localhost:5173
 ```
 
+To connect a wallet on localnet, you need a Sui-compatible wallet that supports custom RPC. [Nightly Wallet](https://nightly.app/) is recommended.
+
+<details>
+<summary>Nightly Wallet setup for localnet</summary>
+
+1. Install [Nightly Wallet](https://nightly.app/download) browser extension (Chrome / Firefox / Edge)
+2. Create or import a wallet
+3. Open Nightly → Settings → Network → Add Custom Network:
+   - Name: `localnet`
+   - RPC URL: `http://localhost:9009`
+4. Switch to the `localnet` network
+5. Import a funded key from `docker/.env.sui` (ADMIN, PLAYER_A, or PLAYER_B private key)
+6. Open `http://localhost:5173` and click Connect Wallet
+
+</details>
+
 ### Step 7 — (Optional) zkLogin CLI
 
 ```bash

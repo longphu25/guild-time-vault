@@ -37,7 +37,7 @@ export type HydratedWorldConfig = WorldConfig;
 export type Network = "localnet" | "testnet" | "devnet" | "mainnet";
 
 export const DEFAULT_RPC_URLS: Record<Network, string> = {
-    localnet: "http://127.0.0.1:9000",
+    localnet: "http://127.0.0.1:9009",
     testnet: "https://fullnode.testnet.sui.io:443",
     devnet: "https://fullnode.devnet.sui.io:443",
     mainnet: "https://fullnode.mainnet.sui.io:443",

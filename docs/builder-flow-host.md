@@ -15,14 +15,14 @@ Run the builder-scaffold flow on your host, targeting **testnet** or a **local n
 
 **Testnet** — no extra setup; set your CLI to testnet and fund keys via the [faucet](https://faucet.sui.io/).
 
-**Local** — you need a local Sui node running on port 9000.
+**Local** — you need a local Sui node running on port 9009.
 
 <details>
 <summary>Local node setup</summary>
 
 **Running the Sui node in Docker, commands on host (common):**
 
-1. Start the container in one terminal (it exposes port 9000):
+1. Start the container in one terminal (it exposes port 9009):
 
    ```bash
    cd docker
@@ -32,7 +32,7 @@ Run the builder-scaffold flow on your host, targeting **testnet** or a **local n
 2. In another terminal, point your host Sui CLI at the node:
 
    ```bash
-   sui client new-env --alias localnet --rpc http://127.0.0.1:9000
+   sui client new-env --alias localnet --rpc http://127.0.0.1:9009
    ```
 
 3. Wait for the container to log **RPC ready** before running deploy/scripts.
@@ -47,7 +47,7 @@ sui start --with-faucet --force-regenesis
 Then point your host Sui CLI at the local node:
 
 ```bash
-sui client new-env --alias localnet --rpc http://127.0.0.1:9000
+sui client new-env --alias localnet --rpc http://127.0.0.1:9009
 ```
 
 </details>
@@ -109,7 +109,7 @@ pnpm create-test-resources localnet   # or testnet
 ```
 
 Check all the created resources in the explorer:
-- [localnet explorer](https://custom.suiscan.xyz/custom/checkpoints?network=http%3A%2F%2Flocalhost%3A9000)
+- [localnet explorer](https://custom.suiscan.xyz/custom/checkpoints?network=http%3A%2F%2Flocalhost%3A9009)
 - [devnet explorer](https://suiscan.xyz/devnet/)
 - [testnet explorer](https://suiscan.xyz/testnet/)
 - [mainnet explorer](https://suiscan.xyz/)

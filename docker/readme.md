@@ -76,10 +76,10 @@ For TS scripts and world-contracts, manually fill in the `.env` files with your 
 
 ## Connect to local node from host
 
-Port **9000** is published. On your host:
+Port **9009** is published. On your host:
 
 ```bash
-sui client new-env --alias localnet --rpc http://127.0.0.1:9000
+sui client new-env --alias localnet --rpc http://127.0.0.1:9009
 sui client switch --env localnet
 ```
 

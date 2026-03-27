@@ -85,7 +85,7 @@
 
     "@mysten/prettier-plugin-move": ["@mysten/prettier-plugin-move@0.3.5", "", { "dependencies": { "prettier": "^3.3.2", "web-tree-sitter": "^0.20.8" }, "bin": { "prettier-move": "bin/prettier-move.js" } }, "sha512-PkYZkaH14OAy4S10o4SLl0odGgDHiaILEADiU06gj/MzYZAYq3wh4uCZCO8haX/Xyh2p6NfVy1sihMnUmRnE1g=="],
 
-    "@mysten/sui": ["@mysten/sui@2.11.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@mysten/bcs": "^2.0.3", "@mysten/utils": "^0.3.1", "@noble/curves": "^2.0.1", "@noble/hashes": "^2.0.1", "@protobuf-ts/grpcweb-transport": "^2.11.1", "@protobuf-ts/runtime": "^2.11.1", "@protobuf-ts/runtime-rpc": "^2.11.1", "@scure/base": "^2.0.0", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "gql.tada": "^1.9.0", "graphql": "^16.12.0", "poseidon-lite": "0.2.1", "valibot": "^1.2.0" } }, "sha512-MuqbFf5buLpHoTujKF8mHnMHRJ+MpiaN0Ruoi+gr3+Gho0h5njMRv0jpso37THAQSc5Cwc8JbT+uY59OXk47Zw=="],
+    "@mysten/sui": ["@mysten/sui@2.12.0", "", { "dependencies": { "@graphql-typed-document-node/core": "^3.2.0", "@mysten/bcs": "^2.0.3", "@mysten/utils": "^0.3.1", "@noble/curves": "^2.0.1", "@noble/hashes": "^2.0.1", "@protobuf-ts/grpcweb-transport": "^2.11.1", "@protobuf-ts/runtime": "^2.11.1", "@protobuf-ts/runtime-rpc": "^2.11.1", "@scure/base": "^2.0.0", "@scure/bip32": "^2.0.1", "@scure/bip39": "^2.0.1", "gql.tada": "^1.9.0", "graphql": "^16.12.0", "poseidon-lite": "0.2.1", "valibot": "^1.2.0" } }, "sha512-7EM3+WHwe42sUw4dsOhodC5/n4AuAs6F/rRA0l4M9ggX7Z6VswNXdozxf8FmDVMB/qDYZoEaw82xFkYR9jK2zg=="],
 
     "@mysten/utils": ["@mysten/utils@0.3.1", "", { "dependencies": { "@scure/base": "^2.0.0" } }, "sha512-36KhxG284uhDdSnlkyNaS6fzKTX9FpP2WQWOwUKIRsqQFFIm2ooCf2TP1IuqrtMpkairwpiWkAS0eg7cpemVzg=="],
 

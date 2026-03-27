@@ -1,6 +1,6 @@
 # Sui development environment (Docker)
 
-One container with **Sui CLI**, **Node.js**, and **pnpm**. No host tooling needed.
+One container with **Sui CLI**, **Node.js**, and **Bun**. No host tooling needed.
 
 For the full builder-scaffold flow (world deploy → publish contract → run scripts) inside this container, see [builder-flow-docker.md](../docs/builder-flow-docker.md).
 
@@ -22,7 +22,7 @@ Every start spins up a fresh local Sui node and funds the accounts from the fauc
 ## What’s in the container
 
 - **Sui CLI** — build and publish Move packages, interact with localnet/testnet
-- **Node.js & pnpm** — run world-contracts and builder-scaffold TS scripts
+- **Node.js & Bun** — run world-contracts and builder-scaffold TS scripts
 - **Pre-funded keys** — `ADMIN`, `PLAYER_A`, `PLAYER_B` in `docker/.env.sui` (and in container at `/workspace/builder-scaffold/docker/.env.sui`)
 
 ## Workspace layout
@@ -72,7 +72,7 @@ For TS scripts and world-contracts, manually fill in the `.env` files with your 
 | Stop local node | `pkill -f "sui start"` |
 | Generate world-contracts .env | `/workspace/scripts/generate-world-env.sh` |
 | Build a contract | `cd /workspace/builder-scaffold/move-contracts/smart_gate_extension && sui move build -e testnet` |
-| Run TS scripts | `cd /workspace/builder-scaffold && pnpm configure-rules` |
+| Run TS scripts | `cd /workspace/builder-scaffold && bun run configure-rules` |
 
 ## Connect to local node from host
 

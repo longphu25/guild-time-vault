@@ -11,7 +11,7 @@ Client dApp using the following tools:
 - [`@evefrontier/dapp-kit`](https://sui-docs.evefrontier.com/) for connecting to
   wallets and loading Frontier data
 - [`@mysten/dapp-kit-react`](https://sdk.mystenlabs.com/dapp-kit) for extended Sui React hooks
-- [pnpm](https://pnpm.io/) for package management
+- [Bun](https://bun.sh/) for package management
 
 ## Features and where to find them
 
@@ -30,13 +30,13 @@ Client dApp using the following tools:
 To install dependencies you can run:
 
 ```bash
-pnpm install
+bun install
 ```
 
 To start your dApp in development mode run:
 
 ```bash
-pnpm dev
+bun run dev
 ```
 
 ## Building
@@ -44,5 +44,5 @@ pnpm dev
 To build your app for deployment, run:
 
 ```bash
-pnpm build
+bun run build
 ```

@@ -6,7 +6,7 @@ Templates and tools for building on EVE Frontier.
 
 - [Git](https://git-scm.com/book/en/v2/Getting-Started-Installing-Git)
 - [Docker](https://docs.docker.com/get-docker/) (for Docker path) **or** [Sui CLI](https://docs.sui.io/guides/developer/getting-started) + Node.js (for Host path)
-- [pnpm](https://pnpm.io/installation) (`npm i -g pnpm`)
+- [Bun](https://bun.sh/) (`curl -fsSL https://bun.sh/install | bash`)
 - `make` (pre-installed on macOS/Linux)
 
 ## Quickstart
@@ -121,10 +121,10 @@ PLAYER_B_PRIVATE_KEY=<suiprivkey1...>
 Deploy:
 
 ```bash
-pnpm install
-pnpm deploy-world localnet          # or testnet
-pnpm configure-world localnet       # or testnet
-pnpm create-test-resources localnet  # or testnet
+bun install
+bun run deploy-world localnet          # or testnet
+bun run configure-world localnet       # or testnet
+bun run create-test-resources localnet  # or testnet
 ```
 
 Copy artifacts:
@@ -205,15 +205,15 @@ make jump                  # Jump with permit (sponsored tx)
 make collect-bounty        # Collect corpse bounty
 ```
 
-Or using pnpm directly:
+Or using bun directly:
 
 ```bash
-pnpm configure-rules
-pnpm authorise-gate-extension
-pnpm authorise-storage-unit-extension
-pnpm issue-tribe-jump-permit
-pnpm jump-with-permit
-pnpm collect-corpse-bounty
+bun run configure-rules
+bun run authorise-gate-extension
+bun run authorise-storage-unit-extension
+bun run issue-tribe-jump-permit
+bun run jump-with-permit
+bun run collect-corpse-bounty
 ```
 
 ### Step 6 — (Optional) Start dApp Frontend

@@ -67,7 +67,7 @@ After publishing, set the package/extension IDs in the repo `.env` and run the [
 From repo root:
 
 ```bash
-pnpm fmt          # format Move files
-pnpm fmt:check    # check formatting (CI)
-pnpm lint         # build + Move linter
+bun run fmt          # format Move files
+bun run fmt:check    # check formatting (CI)
+bun run lint         # build + Move linter
 ```

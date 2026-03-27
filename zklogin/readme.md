@@ -14,11 +14,11 @@ Configure the script with your Enoki API keys and endpoints so it fetches salt a
 
 ## Usage
 
- Requires **Node.js >=22** and `pnpm` installed globally.
+ Requires **Node.js >=22** and [Bun](https://bun.sh/) installed.
 
 ``` bash copy
-pnpm install
-pnpm zklogin
+bun install
+bun run zklogin
 ```
 
 ## Flow

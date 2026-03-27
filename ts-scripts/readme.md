@@ -13,7 +13,7 @@ Interact with your deployed extension contracts from TypeScript.
 ```bash
 # From repo root
 cp .env.example .env    # fill in keys, WORLD_PACKAGE_ID, BUILDER_PACKAGE_ID
-pnpm install
+bun install
 ```
 
 Set `WORLD_PACKAGE_ID`, `BUILDER_PACKAGE_ID`, and other environment variables in `.env` from your extension package deployment output.

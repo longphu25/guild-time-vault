@@ -40,9 +40,9 @@ Use a **stable tag** so builder-scaffold stays compatible if world-contracts has
 git clone -b v0.0.18 https://github.com/evefrontier/world-contracts.git
 cd world-contracts
 cp env.example .env   # fill in keys, ADMIN_ADDRESS, SPONSOR_ADDRESSES, etc.
-pnpm install
-pnpm deploy-world localnet   # or testnet
-pnpm configure-world localnet
+bun install
+bun run deploy-world localnet   # or testnet
+bun run configure-world localnet
 ```
 
 This publishes the world package and configures access control, fuel/energy rates, and gate distances.
@@ -52,7 +52,7 @@ This publishes the world package and configures access control, fuel/energy rate
 Creates the Smart Character, Network Node, Storage Unit, and Gates listed above:
 
 ```bash
-pnpm create-test-resources localnet   # use same network as deploy/configure
+bun run create-test-resources localnet   # use same network as deploy/configure
 ```
 
 ### 3. Copy output into builder-scaffold

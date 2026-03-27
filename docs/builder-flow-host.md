@@ -6,9 +6,8 @@ Run the builder-scaffold flow on your host, targeting **testnet** or a **local n
 
 ## Prerequisites
 
-- [Sui CLI](https://docs.sui.io/guides/developer/getting-started/sui-install), Node.js, and pnpm installed on your host
+- [Sui CLI](https://docs.sui.io/guides/developer/getting-started/sui-install) and [Bun](https://bun.sh/) installed on your host
   - suiup is recommended for easy upgrades on sui versions
-  - Install pnpm `npm i -g pnpm`
 - [README Quickstart](../README.md#quickstart) — clone builder-scaffold if not done before.
 
 ## 1. Choose your network
@@ -102,10 +101,10 @@ cp env.example .env
 # Set SUI_NETWORK=testnet (or localnet) and fill in your keys
 # For development, ADMIN_ADDRESS and SPONSOR_ADDRESSES can be the same
 # GOVERNOR_PRIVATE_KEY is optional or can be the same as ADMIN_PRIVATE_KEY
-pnpm install
-pnpm deploy-world localnet       # or testnet
-pnpm configure-world localnet    # or testnet
-pnpm create-test-resources localnet   # or testnet
+bun install
+bun run deploy-world localnet       # or testnet
+bun run configure-world localnet    # or testnet
+bun run create-test-resources localnet   # or testnet
 ```
 
 Check all the created resources in the explorer:

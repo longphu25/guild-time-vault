@@ -71,11 +71,11 @@ From **builder-scaffold** root (e.g. for **smart_gate_extension**):
 
 ```bash
 # from builder-scaffold root
-pnpm install
-pnpm configure-rules
-pnpm authorise-gate-extension
-pnpm authorise-storage-unit-extension
-pnpm issue-tribe-jump-permit
-pnpm jump-with-permit
-pnpm collect-corpse-bounty
+bun install
+bun run configure-rules
+bun run authorise-gate-extension
+bun run authorise-storage-unit-extension
+bun run issue-tribe-jump-permit
+bun run jump-with-permit
+bun run collect-corpse-bounty
 ```

@@ -42,10 +42,10 @@ Run `/workspace/scripts/generate-world-env.sh` to create `.env` from the contain
 Then:
 
 ```bash
-pnpm install
-pnpm deploy-world localnet    # or testnet
-pnpm configure-world localnet # or testnet
-pnpm create-test-resources localnet   # or testnet
+bun install
+bun run deploy-world localnet    # or testnet
+bun run configure-world localnet # or testnet
+bun run create-test-resources localnet   # or testnet
 ```
 
 ### 3b. Copy world artifacts into builder-scaffold

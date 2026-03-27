@@ -7,6 +7,9 @@ import { WalletGate } from "@/components/capsule/WalletGate";
 import { buildCreateCapsuleTx } from "@/lib/vault-tx";
 import { CAPSULE_MODE } from "@/lib/contract";
 import { useVault } from "@/hooks/use-vault";
+import { sealEncrypt } from "@/lib/seal-client";
+import { walrusUpload } from "@/lib/walrus-client";
+import { CurrentAccountSigner } from "@mysten/dapp-kit-react";
 
 const MODES = [
   { value: CAPSULE_MODE.ARCHIVE, label: "Guild Archive", icon: Globe, desc: "All guild members can read after unlock" },
@@ -16,7 +19,8 @@ const MODES = [
 
 export function CreateCapsule() {
   const navigate = useNavigate();
-  const { signAndExecuteTransaction } = useDAppKit();
+  const dAppKit = useDAppKit();
+  const { signAndExecuteTransaction } = dAppKit;
   const { role, capId, refetch } = useVault();
 
   const [message, setMessage] = useState("");
@@ -24,6 +28,7 @@ export function CreateCapsule() {
   const [mode, setMode] = useState<number>(CAPSULE_MODE.ARCHIVE);
   const [beneficiary, setBeneficiary] = useState("");
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [progress, setProgress] = useState("");
 
   const maxChars = 500;
   const daysUntil = unlockDate ? Math.ceil((new Date(unlockDate).getTime() - Date.now()) / 864e5) : null;
@@ -35,26 +40,35 @@ export function CreateCapsule() {
     if (daysUntil === null || daysUntil < 1) return toast.error("Unlock date must be at least 1 day in the future");
     if (mode === CAPSULE_MODE.PRIVATE_INHERIT && (!beneficiary.trim() || !beneficiary.startsWith("0x")))
       return toast.error("Please enter a valid beneficiary address");
+    if (!capId) return toast.error("No member/officer capability found. Ask an officer to grant you access.");
 
     setIsSubmitting(true);
     try {
-      // TODO: Integrate Seal encrypt + Walrus store here
-      // For now, store message as raw bytes (placeholder)
-      const messageBytes = Array.from(new TextEncoder().encode(message));
-      const policyBytes: number[] = []; // placeholder for seal_policy_id
-
       const unlockTimeMs = new Date(unlockDate).getTime();
-      const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const plaintext = new TextEncoder().encode(message);
 
-      if (!capId) return toast.error("No member/officer capability found. Ask an officer to grant you access.");
+      // Step 1: Seal encrypt
+      setProgress("Encrypting with Seal...");
+      const encryptedData = await sealEncrypt(plaintext, unlockTimeMs);
+
+      // Step 2: Walrus upload
+      setProgress("Uploading to Walrus...");
+      const signer = new CurrentAccountSigner(dAppKit);
+      const { blobId } = await walrusUpload(encryptedData, signer);
+      const blobIdBytes = Array.from(new TextEncoder().encode(blobId));
+
+      // Step 3: On-chain create_capsule
+      setProgress("Submitting transaction...");
+      const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
+      const sealPolicyBytes = Array.from(new TextEncoder().encode(unlockTimeMs.toString()));
 
       const tx = buildCreateCapsuleTx({
         memberCapId: capId,
         mode,
         unlockTimeMs,
         beneficiary: benefAddr,
-        walrusBlobId: messageBytes,
-        sealPolicyId: policyBytes,
+        walrusBlobId: blobIdBytes,
+        sealPolicyId: sealPolicyBytes,
       });
 
       await signAndExecuteTransaction({ transaction: tx });
@@ -65,6 +79,7 @@ export function CreateCapsule() {
       toast.error(err.message ?? "Transaction failed");
     } finally {
       setIsSubmitting(false);
+      setProgress("");
     }
   };
 
@@ -124,7 +139,7 @@ export function CreateCapsule() {
             {/* Submit */}
             <button type="submit" disabled={isSubmitting}
               className="w-full px-6 py-4 bg-gradient-to-r from-[#00F0FF] to-[#A855F7] text-[#0A0A0F] rounded-lg hover:drop-shadow-[0_0_20px_rgba(0,240,255,0.8)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {isSubmitting ? (<><div className="w-5 h-5 border-2 border-[#0A0A0F] border-t-transparent rounded-full animate-spin" /> Launching...</>) : (<><Rocket className="w-5 h-5" /> Launch Capsule</>)}
+              {isSubmitting ? (<><div className="w-5 h-5 border-2 border-[#0A0A0F] border-t-transparent rounded-full animate-spin" /> {progress || "Launching..."}</>) : (<><Rocket className="w-5 h-5" /> Launch Capsule</>)}
             </button>
           </form>
         </div>

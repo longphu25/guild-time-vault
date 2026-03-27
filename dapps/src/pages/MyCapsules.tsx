@@ -9,6 +9,8 @@ import { useVault } from "@/hooks/use-vault";
 import { buildClaimArchiveTx, buildClaimPrivateInheritTx } from "@/lib/vault-tx";
 import { CAPSULE_MODE } from "@/lib/contract";
 import type { CapsuleData } from "@/lib/vault-reader";
+import { walrusDownload } from "@/lib/walrus-client";
+import { sealDecrypt } from "@/lib/seal-client";
 
 const truncate = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`;
 const fmtDate = (ms: number) => new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
@@ -16,7 +18,7 @@ const modeLabel = (m: number) => m === CAPSULE_MODE.ARCHIVE ? "Archive" : m === 
 
 const tabCls = "px-4 py-2 text-[#94A3B8] hover:text-[#E2E8F0] transition-all data-[state=active]:text-[#00F0FF] data-[state=active]:border-b-2 data-[state=active]:border-[#00F0FF]";
 
-function CapsuleItem({ c, onClaim }: { c: CapsuleData; onClaim?: (id: number, mode: number) => void }) {
+function CapsuleItem({ c, onClaim, revealedMessage }: { c: CapsuleData; onClaim?: (id: number, mode: number) => void; revealedMessage?: string }) {
   const now = Date.now();
   const unlockable = !c.claimed && now >= c.unlock_time_ms;
   const daysLeft = Math.ceil((c.unlock_time_ms - now) / 864e5);
@@ -46,10 +48,10 @@ function CapsuleItem({ c, onClaim }: { c: CapsuleData; onClaim?: (id: number, mo
           </button>
         )}
       </div>
-      {/* Show decrypted message if claimed and we have blob data */}
-      {c.claimed && c.walrus_blob_id.length > 0 && (
+      {/* Show decrypted message */}
+      {revealedMessage && (
         <div className="mt-3 pt-3 border-t border-[#2D2D3F]">
-          <p className="text-[#E2E8F0] italic">"{new TextDecoder().decode(new Uint8Array(c.walrus_blob_id))}"</p>
+          <p className="text-[#E2E8F0] italic">"{revealedMessage}"</p>
         </div>
       )}
     </div>
@@ -67,8 +69,11 @@ export function MyCapsules() {
   const sentToMe = capsules.filter((c) => c.beneficiary === addr && c.creator !== addr);
   const claimed = capsules.filter((c) => c.claimed);
 
+  const [revealedMessages, setRevealedMessages] = useState<Record<number, string>>({});
+
   const handleClaim = async (capsuleId: number, mode: number) => {
     try {
+      // Step 1: Claim on-chain
       let tx;
       if (mode === CAPSULE_MODE.PRIVATE_INHERIT) {
         tx = buildClaimPrivateInheritTx(capsuleId);
@@ -78,7 +83,28 @@ export function MyCapsules() {
         return toast.error("No member capability found");
       }
       await signAndExecuteTransaction({ transaction: tx });
-      toast.success("Capsule opened!");
+      toast.success("Capsule claimed!");
+
+      // Step 2: Decrypt content
+      const capsule = capsules.find((c) => c.capsule_id === capsuleId);
+      if (capsule && capsule.walrus_blob_id.length > 0) {
+        try {
+          const blobId = new TextDecoder().decode(new Uint8Array(capsule.walrus_blob_id));
+          const policyStr = new TextDecoder().decode(new Uint8Array(capsule.seal_policy_id));
+          const unlockTimeMs = parseInt(policyStr, 10);
+
+          // Download from Walrus
+          const encryptedData = await walrusDownload(blobId);
+
+          // Decrypt with Seal
+          const decrypted = await sealDecrypt(encryptedData, unlockTimeMs);
+          const message = new TextDecoder().decode(decrypted);
+          setRevealedMessages((prev) => ({ ...prev, [capsuleId]: message }));
+          toast.success("Message decrypted!");
+        } catch (decErr: any) {
+          toast.error(`Claimed but decrypt failed: ${decErr.message}`);
+        }
+      }
       refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to claim capsule");
@@ -113,7 +139,7 @@ export function MyCapsules() {
               ].map(({ value, data }) => (
                 <Tabs.Content key={value} value={value} className="space-y-4">
                   {data.length > 0 ? data.map((c) => (
-                    <CapsuleItem key={c.capsule_id} c={c} onClaim={handleClaim} />
+                    <CapsuleItem key={c.capsule_id} c={c} onClaim={handleClaim} revealedMessage={revealedMessages[c.capsule_id]} />
                   )) : (
                     <div className="text-center py-16">
                       <PackagePlus className="w-16 h-16 text-[#94A3B8] mx-auto mb-4" />

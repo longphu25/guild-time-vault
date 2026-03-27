@@ -1,0 +1,26 @@
+{
+  "js/ts.preferences.autoImportFileExcludePatterns": [
+    "lucide-react"
+  ],
+  "files.exclude": {
+    "**/node_modules": true,
+    "**/.git": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/.vite": true,
+    "**/.DS_Store": true,
+    "move-contracts/**/build": true,
+    "dapps/node_modules": true
+  },
+  "search.exclude": {
+    "**/node_modules": true,
+    "**/build": true,
+    "**/dist": true,
+    "**/.vite": true,
+    "**/pnpm-lock.yaml": true,
+    "**/package-lock.json": true,
+    "**/bun.lock": true,
+    "move-contracts/**/build": true,
+    "deployments/**": true
+  }
+}

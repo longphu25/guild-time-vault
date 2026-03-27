@@ -1,4 +1,5 @@
 ---
+description: EVE Frontier Builder Scaffold project context — structure, tech stack, contracts, scripts, dApp, and deployment flows
 inclusion: auto
 ---
 
@@ -70,7 +71,7 @@ builder-scaffold/
 │   ├── package.json
 │   └── tsconfig.json
 ├── docker/                      # Dev container
-│   ├── Dockerfile                       # Ubuntu 24.04 + Sui CLI + Node.js 24 + pnpm
+│   ├── Dockerfile                       # Ubuntu 24.04 + Sui CLI + Node.js 24 + Bun
 │   ├── compose.yml                      # sui-dev service, port 9009
 │   ├── docker-compose.override.yml      # PostgreSQL indexer + GraphQL (port 9125)
 │   ├── scripts/
@@ -86,7 +87,7 @@ builder-scaffold/
 │   ├── builder-flow-docker.md
 │   ├── builder-flow-host.md
 │   └── building-on-existing-world.md
-├── package.json                         # Root: pnpm scripts (fmt, lint, run ts-scripts)
+├── package.json                         # Root: bun scripts (fmt, lint, run ts-scripts)
 ├── tsconfig.json                        # Root TS config (ES2022, strict)
 ├── .env.example                         # Template biến môi trường
 └── .prettierrc / .prettierignore
@@ -104,7 +105,7 @@ builder-scaffold/
 | Backend scripts | TypeScript, `@mysten/sui` SDK, `tsx` runner |
 | Frontend | React 19, Vite, Radix UI, `@evefrontier/dapp-kit`, `@mysten/dapp-kit-react` |
 | Auth | zkLogin (OAuth → ZK proof → Sui signature) |
-| DevOps | Docker (Ubuntu 24.04), PostgreSQL (indexer), pnpm |
+| DevOps | Docker (Ubuntu 24.04), PostgreSQL (indexer), Bun |
 | Formatting | Prettier (Move + TypeScript) |
 
 ---
@@ -168,7 +169,58 @@ builder-scaffold/
 
 ## DApp Frontend
 
-React app template kết nối EVE Frontier:
+React app template kết nối EVE Frontier.
+
+### @evefrontier/dapp-kit (v0.1.7)
+
+React SDK for building EVE Frontier dApps on Sui blockchain.
+- Full API docs: http://sui-docs.evefrontier.com/
+- Install: `bun add @evefrontier/dapp-kit @tanstack/react-query react`
+
+#### Subpath Imports
+| Subpath | Nội dung |
+|---------|----------|
+| `@evefrontier/dapp-kit` | Default: providers, hooks, types, utils |
+| `@evefrontier/dapp-kit/graphql` | GraphQL client, queries, response types |
+| `@evefrontier/dapp-kit/types` | Type definitions only |
+| `@evefrontier/dapp-kit/utils` | Utilities (parsing, transforms, config) |
+| `@evefrontier/dapp-kit/hooks` | Hooks only |
+| `@evefrontier/dapp-kit/providers` | Providers only |
+| `@evefrontier/dapp-kit/config` | Config / dApp kit setup |
+
+#### Providers
+- `EveFrontierProvider` — wraps QueryClient, DAppKit, Vault, SmartObject, Notification
+- `VaultProvider` — EVE wallet/connection
+- `SmartObjectProvider` — GraphQL assembly data
+- `NotificationProvider` — toast notifications
+
+#### Hooks
+- `useConnection()` — `{ isConnected, handleConnect, handleDisconnect }`
+- `useSmartObject()` — `{ assembly, loading }` — query assembly data
+- `useNotification()` — toast/notification management
+- `useSponsoredTransaction()` — sponsored tx (player signs, server pays gas)
+
+#### GraphQL Queries
+- `getObjectByAddress`, `getObjectWithDynamicFields`, `getObjectWithJson`
+- `getOwnedObjectsByType`, `getOwnedObjectsByPackage`
+- `getWalletCharacters`, `getCharacterAndOwnedObjects`
+- `getSingletonObjectByType`, `getObjectsByType`
+- `getAssemblyWithOwner`, `getObjectOwnerAndOwnedObjectsByType`
+
+#### Utilities
+- Config: `getEveWorldPackageId()`, `getSuiGraphqlEndpoint()`, `getEnergyConfig()`, `getFuelEfficiencyConfig()`
+- Formatting: `abbreviateAddress()`, `formatDuration()`, `formatM3()`, `getVolumeM3()`
+- Assembly: `isOwner()`, `getTxUrl()`, `getDappUrl()`, `findOwnerByAddress()`, `assertAssemblyType()`
+- Transforms: `transformToCharacter()`, `transformToAssembly()`
+- Errors: `ERRORS`, `parseErrorFromMessage()`
+
+#### Config via Environment
+- `VITE_OBJECT_ID` — Sui Object ID of assembly
+- URL params: `?itemId=...&tenant=...` (derived)
+
+### UI Stack
+- Tailwind CSS v4 + shadcn/ui (Vite plugin)
+- Import alias: `@/*` → `./src/*`
 
 ### Provider Stack (main.tsx)
 ```
@@ -220,7 +272,7 @@ Interactive CLI cho OAuth-based Sui transaction signing:
 
 ### Dockerfile
 - Base: Ubuntu 24.04
-- Cài: Sui CLI (suiup), Node.js 24, pnpm, PostgreSQL client, jq, git
+- Cài: Sui CLI (suiup), Node.js 24, Bun, PostgreSQL client, jq, git
 
 ### compose.yml
 - Service `sui-dev`: build từ Dockerfile, expose port 9009 (RPC)
@@ -285,21 +337,21 @@ TENANT=dev
 ├─────────────────────────────────────────────────────────┤
 │ 3. CONFIGURE                                            │
 │    cp .env.example .env → fill keys + IDs               │
-│    pnpm install                                         │
+│    bun install                                         │
 ├─────────────────────────────────────────────────────────┤
 │ 4. INTERACT                                             │
-│    pnpm configure-rules                                 │
-│    pnpm authorise-gate-extension                        │
-│    pnpm authorise-storage-unit-extension                │
-│    pnpm issue-tribe-jump-permit                         │
-│    pnpm jump-with-permit                                │
-│    pnpm collect-corpse-bounty                           │
+│    bun run configure-rules                              │
+│    bun run authorise-gate-extension                     │
+│    bun run authorise-storage-unit-extension              │
+│    bun run issue-tribe-jump-permit                      │
+│    bun run jump-with-permit                             │
+│    bun run collect-corpse-bounty                        │
 ├─────────────────────────────────────────────────────────┤
 │ 5. FRONTEND (optional)                                  │
-│    cd dapps → pnpm install → pnpm dev                   │
+│    cd dapps → bun install → bun run dev                 │
 ├─────────────────────────────────────────────────────────┤
 │ 6. ZKLOGIN (optional)                                   │
-│    cd zklogin → pnpm install → pnpm zklogin             │
+│    cd zklogin → bun install → bun run zklogin           │
 └─────────────────────────────────────────────────────────┘
 ```
 
@@ -351,9 +403,9 @@ dApp Frontend (React)
 
 | Script | Mô tả |
 |--------|-------|
-| `pnpm fmt` | Format Move files |
-| `pnpm fmt:ts` | Format TypeScript files |
-| `pnpm lint` | Lint tất cả Move packages |
+| `bun run fmt` | Format Move files |
+| `bun run fmt:ts` | Format TypeScript files |
+| `bun run lint` | Lint tất cả Move packages |
 
 ---
 
@@ -370,12 +422,12 @@ dApp Frontend (React)
 | `make publish-move` | Publish Move package |
 | `make deploy-world` | Clone, deploy world, auto-fill .env |
 | `make deploy-world-testnet` | Deploy world trên testnet |
-| `pnpm configure-rules` | Set tribe + bounty config |
-| `pnpm authorise-gate-extension` | Authorize XAuth trên gate |
-| `pnpm authorise-storage-unit-extension` | Authorize XAuth trên storage unit |
-| `pnpm issue-tribe-jump-permit` | Cấp JumpPermit |
-| `pnpm jump-with-permit` | Nhảy gate bằng permit |
-| `pnpm collect-corpse-bounty` | Thu bounty + nhận permit |
+| `bun run configure-rules` | Set tribe + bounty config |
+| `bun run authorise-gate-extension` | Authorize XAuth trên gate |
+| `bun run authorise-storage-unit-extension` | Authorize XAuth trên storage unit |
+| `bun run issue-tribe-jump-permit` | Cấp JumpPermit |
+| `bun run jump-with-permit` | Nhảy gate bằng permit |
+| `bun run collect-corpse-bounty` | Thu bounty + nhận permit |
 
 ---
 

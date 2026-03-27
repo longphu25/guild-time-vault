@@ -6,7 +6,7 @@ import { toast } from "sonner";
 import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
 import { WalletGate } from "@/components/capsule/WalletGate";
 import { useVault } from "@/hooks/use-vault";
-import { buildClaimCapsuleTx } from "@/lib/vault-tx";
+import { buildClaimArchiveTx, buildClaimPrivateInheritTx } from "@/lib/vault-tx";
 import { CAPSULE_MODE } from "@/lib/contract";
 import type { CapsuleData } from "@/lib/vault-reader";
 
@@ -16,7 +16,7 @@ const modeLabel = (m: number) => m === CAPSULE_MODE.ARCHIVE ? "Archive" : m === 
 
 const tabCls = "px-4 py-2 text-[#94A3B8] hover:text-[#E2E8F0] transition-all data-[state=active]:text-[#00F0FF] data-[state=active]:border-b-2 data-[state=active]:border-[#00F0FF]";
 
-function CapsuleItem({ c, onClaim }: { c: CapsuleData; onClaim?: (id: number) => void }) {
+function CapsuleItem({ c, onClaim }: { c: CapsuleData; onClaim?: (id: number, mode: number) => void }) {
   const now = Date.now();
   const unlockable = !c.claimed && now >= c.unlock_time_ms;
   const daysLeft = Math.ceil((c.unlock_time_ms - now) / 864e5);
@@ -41,7 +41,7 @@ function CapsuleItem({ c, onClaim }: { c: CapsuleData; onClaim?: (id: number) =>
           </div>
         </div>
         {unlockable && onClaim && (
-          <button onClick={() => onClaim(c.capsule_id)} className="px-4 py-2 bg-[#00F0FF] text-[#0A0A0F] rounded text-sm hover:drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] transition-all">
+          <button onClick={() => onClaim(c.capsule_id, c.mode)} className="px-4 py-2 bg-[#00F0FF] text-[#0A0A0F] rounded text-sm hover:drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] transition-all">
             Open
           </button>
         )}
@@ -59,7 +59,7 @@ function CapsuleItem({ c, onClaim }: { c: CapsuleData; onClaim?: (id: number) =>
 export function MyCapsules() {
   const [tab, setTab] = useState("all");
   const account = useCurrentAccount();
-  const { capsules, role, loading, refetch } = useVault();
+  const { capsules, role, capId, loading, refetch } = useVault();
   const { signAndExecuteTransaction } = useDAppKit();
 
   const addr = account?.address ?? "";
@@ -67,12 +67,18 @@ export function MyCapsules() {
   const sentToMe = capsules.filter((c) => c.beneficiary === addr && c.creator !== addr);
   const claimed = capsules.filter((c) => c.claimed);
 
-  const handleClaim = async (capsuleId: number) => {
+  const handleClaim = async (capsuleId: number, mode: number) => {
     try {
-      const tx = buildClaimCapsuleTx(capsuleId);
+      let tx;
+      if (mode === CAPSULE_MODE.PRIVATE_INHERIT) {
+        tx = buildClaimPrivateInheritTx(capsuleId);
+      } else if (capId) {
+        tx = buildClaimArchiveTx(capId, capsuleId);
+      } else {
+        return toast.error("No member capability found");
+      }
       await signAndExecuteTransaction({ transaction: tx });
       toast.success("Capsule opened!");
-      // TODO: fetch blob from Walrus + Seal decrypt
       refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to claim capsule");

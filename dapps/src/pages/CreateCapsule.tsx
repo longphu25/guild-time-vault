@@ -17,7 +17,7 @@ const MODES = [
 export function CreateCapsule() {
   const navigate = useNavigate();
   const { signAndExecuteTransaction } = useDAppKit();
-  const { role, refetch } = useVault();
+  const { role, capId, refetch } = useVault();
 
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
@@ -46,7 +46,10 @@ export function CreateCapsule() {
       const unlockTimeMs = new Date(unlockDate).getTime();
       const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
 
+      if (!capId) return toast.error("No member/officer capability found. Ask an officer to grant you access.");
+
       const tx = buildCreateCapsuleTx({
+        memberCapId: capId,
         mode,
         unlockTimeMs,
         beneficiary: benefAddr,

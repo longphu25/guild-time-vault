@@ -4,7 +4,13 @@ import { TX } from "./contract";
 
 const SUI_CLOCK = "0x6";
 
+/**
+ * create_capsule(vault: &mut GuildVault, cap: &GuildMemberCap, mode: u8,
+ *   unlock_time_ms: u64, beneficiary: address, walrus_blob_id: vector<u8>,
+ *   seal_policy_id: vector<u8>, clock: &Clock, ctx: &mut TxContext)
+ */
 export function buildCreateCapsuleTx(args: {
+  memberCapId: string;
   mode: number;
   unlockTimeMs: number;
   beneficiary: string;
@@ -16,6 +22,7 @@ export function buildCreateCapsuleTx(args: {
     target: TX.createCapsule,
     arguments: [
       tx.object(vaultConfig.vaultObjectId),
+      tx.object(args.memberCapId),
       tx.pure.u8(args.mode),
       tx.pure.u64(args.unlockTimeMs),
       tx.pure.address(args.beneficiary),
@@ -27,10 +34,30 @@ export function buildCreateCapsuleTx(args: {
   return tx;
 }
 
-export function buildClaimCapsuleTx(capsuleId: number) {
+/**
+ * claim_archive(vault: &mut GuildVault, cap: &GuildMemberCap, capsule_id: u64, clock: &Clock, ctx)
+ */
+export function buildClaimArchiveTx(memberCapId: string, capsuleId: number) {
   const tx = new Transaction();
   tx.moveCall({
-    target: TX.claimCapsule,
+    target: TX.claimArchive,
+    arguments: [
+      tx.object(vaultConfig.vaultObjectId),
+      tx.object(memberCapId),
+      tx.pure.u64(capsuleId),
+      tx.object(SUI_CLOCK),
+    ],
+  });
+  return tx;
+}
+
+/**
+ * claim_private_inherit(vault: &mut GuildVault, capsule_id: u64, clock: &Clock, ctx)
+ */
+export function buildClaimPrivateInheritTx(capsuleId: number) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: TX.claimPrivateInherit,
     arguments: [
       tx.object(vaultConfig.vaultObjectId),
       tx.pure.u64(capsuleId),
@@ -40,6 +67,7 @@ export function buildClaimCapsuleTx(capsuleId: number) {
   return tx;
 }
 
+/** heartbeat(heart: &mut Heartbeat, clock: &Clock) */
 export function buildHeartbeatTx() {
   const tx = new Transaction();
   tx.moveCall({
@@ -52,13 +80,15 @@ export function buildHeartbeatTx() {
   return tx;
 }
 
-export function buildTriggerDeadManTx(capsuleId: number) {
+/** trigger_dead_man(vault, heartbeat, officer_cap, capsule_id, clock, ctx) */
+export function buildTriggerDeadManTx(officerCapId: string, capsuleId: number) {
   const tx = new Transaction();
   tx.moveCall({
     target: TX.triggerDeadMan,
     arguments: [
       tx.object(vaultConfig.vaultObjectId),
       tx.object(vaultConfig.heartbeatObjectId),
+      tx.object(officerCapId),
       tx.pure.u64(capsuleId),
       tx.object(SUI_CLOCK),
     ],
@@ -66,6 +96,7 @@ export function buildTriggerDeadManTx(capsuleId: number) {
   return tx;
 }
 
+/** grant_member(officer_cap, vault, to, ctx) */
 export function buildGrantMemberTx(officerCapId: string, toAddress: string) {
   const tx = new Transaction();
   tx.moveCall({
@@ -79,6 +110,7 @@ export function buildGrantMemberTx(officerCapId: string, toAddress: string) {
   return tx;
 }
 
+/** grant_officer(officer_cap, vault, to, ctx) */
 export function buildGrantOfficerTx(officerCapId: string, toAddress: string) {
   const tx = new Transaction();
   tx.moveCall({

@@ -2,14 +2,13 @@ import { useState } from "react";
 import { useNavigate } from "react-router";
 import { Rocket, Globe, Lock, Calendar, Heart } from "lucide-react";
 import { toast } from "sonner";
-import { useDAppKit } from "@mysten/dapp-kit-react";
+import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
 import { WalletGate } from "@/components/capsule/WalletGate";
 import { buildCreateCapsuleTx } from "@/lib/vault-tx";
 import { CAPSULE_MODE } from "@/lib/contract";
 import { useVault } from "@/hooks/use-vault";
 import { sealEncrypt } from "@/lib/seal-client";
 import { walrusUpload } from "@/lib/walrus-client";
-import { CurrentAccountSigner } from "@mysten/dapp-kit-react";
 
 const MODES = [
   { value: CAPSULE_MODE.ARCHIVE, label: "Guild Archive", icon: Globe, desc: "All guild members can read after unlock" },
@@ -21,12 +20,14 @@ export function CreateCapsule() {
   const navigate = useNavigate();
   const dAppKit = useDAppKit();
   const { signAndExecuteTransaction } = dAppKit;
+  const account = useCurrentAccount();
   const { role, capId, refetch } = useVault();
 
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
   const [mode, setMode] = useState<number>(CAPSULE_MODE.ARCHIVE);
   const [beneficiary, setBeneficiary] = useState("");
+  const [storageDays, setStorageDays] = useState("30");
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [progress, setProgress] = useState("");
 
@@ -51,10 +52,16 @@ export function CreateCapsule() {
       setProgress("Encrypting with Seal...");
       const encryptedData = await sealEncrypt(plaintext, unlockTimeMs);
 
-      // Step 2: Walrus upload
-      setProgress("Uploading to Walrus...");
-      const signer = new CurrentAccountSigner(dAppKit);
-      const { blobId } = await walrusUpload(encryptedData, signer);
+      // Step 2: Walrus upload (auto-swaps SUI→WAL if needed)
+      const { blobId } = await walrusUpload(
+        encryptedData,
+        account!.address,
+        signAndExecuteTransaction,
+        {
+          epochs: parseInt(storageDays) || 5,
+          onProgress: (p) => setProgress(p.detail ?? p.step),
+        },
+      );
       const blobIdBytes = Array.from(new TextEncoder().encode(blobId));
 
       // Step 3: On-chain create_capsule
@@ -63,7 +70,8 @@ export function CreateCapsule() {
       const sealPolicyBytes = Array.from(new TextEncoder().encode(unlockTimeMs.toString()));
 
       const tx = buildCreateCapsuleTx({
-        memberCapId: capId,
+        capId: capId,
+        role: role === "officer" ? "officer" : "member",
         mode,
         unlockTimeMs,
         beneficiary: benefAddr,
@@ -76,7 +84,12 @@ export function CreateCapsule() {
       refetch();
       setTimeout(() => navigate("/my-capsules"), 1500);
     } catch (err: any) {
-      toast.error(err.message ?? "Transaction failed");
+      const msg = err.message ?? "Transaction failed";
+      if (msg.includes("rejected") || msg.includes("denied") || msg.includes("cancel")) {
+        toast.error("Transaction cancelled");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setIsSubmitting(false);
       setProgress("");
@@ -137,6 +150,14 @@ export function CreateCapsule() {
             )}
 
             {/* Submit */}
+            {/* Storage Duration */}
+            <div>
+              <label className="block text-[#E2E8F0] mb-2">Storage Duration (days)</label>
+              <input type="number" value={storageDays} onChange={(e) => setStorageDays(e.target.value)} min={daysUntil ?? 1}
+                className="w-full px-4 py-3 bg-[#1A1A2E]/50 border border-[#2D2D3F] rounded-lg text-[#E2E8F0] focus:border-[#00F0FF] focus:outline-none focus:ring-1 focus:ring-[#00F0FF] transition-all" />
+              <p className="text-xs text-[#94A3B8] mt-1">How long the capsule data stays on Walrus. Must be ≥ unlock time ({daysUntil ?? "?"}d). 1 epoch ≈ 1 day on testnet.</p>
+            </div>
+
             <button type="submit" disabled={isSubmitting}
               className="w-full px-6 py-4 bg-gradient-to-r from-[#00F0FF] to-[#A855F7] text-[#0A0A0F] rounded-lg hover:drop-shadow-[0_0_20px_rgba(0,240,255,0.8)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
               {isSubmitting ? (<><div className="w-5 h-5 border-2 border-[#0A0A0F] border-t-transparent rounded-full animate-spin" /> {progress || "Launching..."}</>) : (<><Rocket className="w-5 h-5" /> Launch Capsule</>)}

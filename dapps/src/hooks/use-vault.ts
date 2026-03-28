@@ -1,4 +1,5 @@
-import { useEffect, useState, useCallback } from "react";
+import { useCallback } from "react";
+import { useQuery } from "@tanstack/react-query";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import {
   fetchVault,
@@ -24,45 +25,47 @@ export interface VaultState {
 
 export function useVault(): VaultState {
   const account = useCurrentAccount();
-  const [vault, setVault] = useState<VaultData | null>(null);
-  const [capsules, setCapsules] = useState<CapsuleData[]>([]);
-  const [heartbeat, setHeartbeat] = useState<HeartbeatData | null>(null);
-  const [role, setRole] = useState<UserRole>("guest");
-  const [capId, setCapId] = useState<string>();
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  const load = useCallback(async () => {
-    setLoading(true);
-    setError(null);
-    try {
-      const [v, c, h] = await Promise.all([
-        fetchVault(),
-        fetchCapsules(),
-        fetchHeartbeat(),
-      ]);
-      setVault(v);
-      setCapsules(c);
-      setHeartbeat(h);
+  const vaultQuery = useQuery({
+    queryKey: ["vault"],
+    queryFn: fetchVault,
+    staleTime: 30_000,
+  });
 
-      if (account?.address) {
-        const r = await detectUserRole(account.address);
-        setRole(r.role);
-        setCapId(r.capId);
-      } else {
-        setRole("guest");
-        setCapId(undefined);
-      }
-    } catch (e: any) {
-      setError(e.message ?? "Failed to load vault");
-    } finally {
-      setLoading(false);
-    }
-  }, [account?.address]);
+  const capsulesQuery = useQuery({
+    queryKey: ["capsules"],
+    queryFn: fetchCapsules,
+    staleTime: 30_000,
+  });
 
-  useEffect(() => {
-    load();
-  }, [load]);
+  const heartbeatQuery = useQuery({
+    queryKey: ["heartbeat"],
+    queryFn: fetchHeartbeat,
+    staleTime: 30_000,
+  });
 
-  return { vault, capsules, heartbeat, role, capId, loading, error, refetch: load };
+  const roleQuery = useQuery({
+    queryKey: ["role", account?.address],
+    queryFn: () => detectUserRole(account!.address),
+    enabled: !!account?.address,
+    staleTime: 60_000,
+  });
+
+  const refetch = useCallback(() => {
+    vaultQuery.refetch();
+    capsulesQuery.refetch();
+    heartbeatQuery.refetch();
+    roleQuery.refetch();
+  }, [vaultQuery, capsulesQuery, heartbeatQuery, roleQuery]);
+
+  return {
+    vault: vaultQuery.data ?? null,
+    capsules: capsulesQuery.data ?? [],
+    heartbeat: heartbeatQuery.data ?? null,
+    role: roleQuery.data?.role ?? "guest",
+    capId: roleQuery.data?.capId,
+    loading: vaultQuery.isLoading || capsulesQuery.isLoading || heartbeatQuery.isLoading,
+    error: vaultQuery.error?.message ?? capsulesQuery.error?.message ?? null,
+    refetch,
+  };
 }

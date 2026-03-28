@@ -105,7 +105,8 @@ builder-scaffold/
 │   ├── builder-flow.md                  # Hướng dẫn chọn Docker vs Host path
 │   ├── builder-flow-docker.md
 │   ├── builder-flow-host.md
-│   └── building-on-existing-world.md
+│   ├── building-on-existing-world.md
+│   └── seal-integration.md             # Seal encryption + access control reference
 ├── package.json                         # Root: bun scripts (fmt, lint, run ts-scripts)
 ├── tsconfig.json                        # Root TS config (ES2022, strict)
 ├── .env.example                         # Template biến môi trường
@@ -188,6 +189,14 @@ builder-scaffold/
 
 #### vault_views.move
 - View functions cho UI/indexer: `vault_guild_id`, `vault_capsule_count`, `get_capsule_mode`, `get_capsule_unlock_time`, `is_capsule_claimed`, `is_capsule_unlockable`, `is_heartbeat_timed_out`
+
+#### vault_seal.move (Seal integration)
+- `seal_approve_archive()` — entry, Seal key server gọi via dry_run: kiểm tra GuildMemberCap + time + claimed
+- `seal_approve_private_inherit()` — entry: kiểm tra sender == beneficiary + time + claimed
+- `seal_approve_dead_man()` — entry: kiểm tra heartbeat timeout + claimed
+- `build_identity()` — helper tạo IBE identity bytes: `[mode:u8][capsule_id:u64][context_addr:address]`
+- Identity encoding: Seal full identity = `[PackageId][mode][capsule_id][addr]`, seal_approve nhận suffix (không có PackageId)
+- Tất cả seal_approve* là `entry` (non-public), side-effect free, abort nếu deny — theo đúng Seal spec
 
 ### Dependency
 - `world-contracts` (local path hoặc git tag) — cung cấp `Gate`, `Character`, `StorageUnit`, `OwnerCap`, access control
@@ -352,6 +361,39 @@ In-Game:  EVE Vault → zkLogin → link character + assets on-chain
 Out-Game: EVE Vault extension → approve dApp connection → wallet as identity anchor
 Scripts:  Ed25519Keypair → sign tx → submit to Sui RPC
 ```
+
+---
+
+## Seal — Encryption & Access Control
+
+Seal cung cấp mã hóa dữ liệu + kiểm soát truy cập on-chain. Docs: https://seal-docs.wal.app
+Chi tiết tích hợp: [docs/seal-integration.md](../docs/seal-integration.md)
+
+### Cách hoạt động với Guild Time Vault
+1. Client encrypt nội dung bằng Seal SDK với IBE identity = `[PackageId][mode][capsule_id][addr]`
+2. Upload encrypted blob lên Walrus → lưu blob_id on-chain trong Capsule
+3. User claim capsule on-chain (set claimed=true)
+4. User request decryption key: build PTB gọi `seal_approve*` → Seal key server dry_run → nếu pass → trả derived key
+5. Client decrypt blob bằng derived key
+
+### seal_approve* functions (vault_seal.move)
+| Function | Mode | Kiểm tra |
+|----------|------|----------|
+| `seal_approve_archive` | ARCHIVE | GuildMemberCap + guild match + claimed + time >= unlock |
+| `seal_approve_private_inherit` | PRIVATE_INHERIT | sender == beneficiary + claimed + time >= unlock |
+| `seal_approve_dead_man` | DEAD_MAN | heartbeat timeout + claimed |
+
+### IBE Identity Format
+```
+[mode:u8][capsule_id:u64_bcs][context_address:address_bcs]
+```
+- ARCHIVE: context = guild_id
+- PRIVATE_INHERIT: context = beneficiary address
+- DEAD_MAN: context = vault_id (object address)
+
+### Key Servers (Testnet)
+- Decentralized: `0xb012...1e98` (aggregator: `https://seal-aggregator-testnet.mystenlabs.com`)
+- Independent: `0x73d0...db75`, `0xf5d1...23c8`
 
 ---
 
@@ -579,6 +621,7 @@ dApp Frontend (React)
 7. **Borrow-Return Pattern**: `borrow_owner_cap` → use → `return_owner_cap` (hot potato pattern)
 8. **Config Hydration**: Load `extracted-object-ids.json` từ deployments/ để fill world config tự động
 9. **EVE Vault Identity**: zkLogin-based wallet, dApp connect qua browser extension, scripts dùng Ed25519Keypair trực tiếp
+10. **Seal Access Control**: `seal_approve*` entry functions cho Seal key server evaluation, IBE identity encoding `[mode][capsule_id][addr]`, side-effect free dry_run
 
 ---
 

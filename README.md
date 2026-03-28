@@ -216,7 +216,78 @@ bun run jump-with-permit
 bun run collect-corpse-bounty
 ```
 
-### Step 6 — (Optional) Start dApp Frontend
+### Step 6 — (Optional) Guild Time Vault
+
+Guild Time Vault provides time-locked capsules with role-based access control and a dead-man switch for guild asset protection.
+
+**Deploy to testnet:**
+
+```bash
+# Publish contract
+sui client publish move-contracts/guild_time_vault --gas-budget 100000000
+# → Note VAULT_PACKAGE_ID from Published Objects
+
+# Init vault (guild_id = your address, timeout = 14 days)
+sui client call \
+  --package <VAULT_PACKAGE_ID> \
+  --module vault_roles \
+  --function init_guild_vault \
+  --args <YOUR_ADDRESS> 1209600000 0x6 \
+  --gas-budget 10000000
+# → Note GuildVault (shared), Heartbeat, GuildOfficerCap IDs
+```
+
+**Testnet deployment (already deployed):**
+
+```
+VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
+VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd
+HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
+OFFICER_CAP_ID=0x1e259c6e134da2331de2ba66f8ead29a8e5daddc467e88bd29e5b462db13bd8a
+```
+
+**Interact via scripts:**
+
+```bash
+# Add to .env
+VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
+VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd
+HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
+OFFICER_CAP_ID=0x1e259c6e134da2331de2ba66f8ead29a8e5daddc467e88bd29e5b462db13bd8a
+
+# Grant member
+MEMBER_ADDRESS=0x... bun run vault:grant-member
+
+# Create capsule (MODE: 0=Archive, 1=Private Inherit, 2=Dead Man)
+MODE=0 UNLOCK_TIME_MS=1735689600000 bun run vault:create-capsule
+
+# Claim capsule
+CAPSULE_ID=0 CLAIM_MODE=archive bun run vault:claim-capsule
+
+# Ping heartbeat
+bun run vault:heartbeat
+```
+
+**Connect dApp with Utopia (EVE Vault):**
+
+```bash
+# 1. Update dapps/.env
+VITE_VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
+VITE_VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd
+VITE_HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
+
+# 2. Start dApp
+cd dapps && bun run dev
+
+# 3. Open with Utopia tenant
+# http://localhost:5173/?tenant=utopia
+```
+
+Install EVE Vault browser extension, connect wallet, then use the Vault Dashboard tabs to create/claim capsules and ping heartbeat.
+
+> Note: Sui CLI wallet (Ed25519) and EVE Vault wallet (zkLogin) have different addresses. After connecting EVE Vault, grant member/officer cap to the zkLogin address.
+
+### Step 7 — (Optional) Start dApp Frontend
 
 ```bash
 make dev
@@ -239,7 +310,7 @@ To connect a wallet on localnet, you need a Sui-compatible wallet that supports 
 
 </details>
 
-### Step 7 — (Optional) zkLogin CLI
+### Step 8 — (Optional) zkLogin CLI
 
 ```bash
 make zklogin
@@ -270,6 +341,11 @@ make authorise-storage     Authorize XAuth on storage unit
 make issue-permit          Issue tribe jump permit
 make jump                  Jump with permit
 make collect-bounty        Collect corpse bounty
+make vault-init            Init Guild Vault (bun run vault:init)
+make vault-grant-member    Grant MemberCap (bun run vault:grant-member)
+make vault-create-capsule  Create capsule (bun run vault:create-capsule)
+make vault-claim-capsule   Claim capsule (bun run vault:claim-capsule)
+make vault-heartbeat       Ping heartbeat (bun run vault:heartbeat)
 make setup-world           Deploy + configure world-contracts (legacy)
 make deploy-world          Clone, deploy world, auto-fill .env (full auto)
 make deploy-world-testnet  Deploy world on testnet
@@ -283,9 +359,10 @@ make clean                 Remove node_modules and build artifacts
 |------|---------|
 | [docker/](./docker/readme.md) | Dev container (Sui CLI + Node.js) — used by the Docker flow. |
 | [move-contracts/](./move-contracts/readme.md) | Custom Smart Assembly examples (e.g. [smart_gate_extension](./move-contracts/smart_gate_extension/)); build & publish. |
+| move-contracts/guild_time_vault/ | Guild Time Vault — time-locked capsules, role-based access, dead-man switch. |
 | [ts-scripts/](./ts-scripts/readme.md) | TypeScript scripts to call your contracts; run after publishing. |
 | [setup-world/](./setup-world/readme.md) | What "deploy world" does and what gets created. |
-| [dapps/](./dapps/readme.md) | Reference dApp template (optional). |
+| [dapps/](./dapps/readme.md) | Reference dApp template with Guild Vault UI (optional). |
 | [zklogin/](./zklogin/readme.md) | zkLogin CLI for OAuth-based signing (optional). |
 | [docs/](./docs/) | Detailed flow guides (Docker, Host, existing world). |
 

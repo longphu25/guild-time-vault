@@ -29,6 +29,15 @@ builder-scaffold/
 │   │   ├── tests/gate_tests.move        # Test placeholder (commented out)
 │   │   ├── Move.toml                    # Package config, dependency world-contracts
 │   │   └── Published.toml               # Metadata deploy testnet
+│   ├── guild_time_vault/        # Guild Time Vault — time-locked capsules + dead-man switch
+│   │   ├── sources/
+│   │   │   ├── vault_core.move          # Core structs, events, internal helpers
+│   │   │   ├── vault_roles.move         # GuildMemberCap/GuildOfficerCap, grant/revoke
+│   │   │   ├── vault_capsule_api.move   # Create/claim/delete capsule (3 modes)
+│   │   │   ├── vault_heartbeat_api.move # Heartbeat ping, dead-man trigger
+│   │   │   └── vault_views.move         # View functions cho UI/indexer
+│   │   ├── tests/vault_tests.move       # 17 tests covering all user flows
+│   │   └── Move.toml                    # Package: guild address, Sui dependency
 │   └── storage_unit_extension/  # Template trống cho storage unit extension
 │       ├── sources/storage_unit_extension.move
 │       ├── tests/storage_unit_extension_tests.move
@@ -43,6 +52,16 @@ builder-scaffold/
 │   │   ├── collect-corpse-bounty.ts     # Thu bounty + nhận permit (sponsored tx)
 │   │   ├── extension-ids.ts             # Resolve builder package/config IDs
 │   │   └── modules.ts                   # Tên module Move constants
+│   ├── guild_time_vault/        # Scripts cho guild_time_vault
+│   │   ├── init-vault.ts               # Leader init vault + OfficerCap + Heartbeat
+│   │   ├── grant-member.ts             # Cấp GuildMemberCap
+│   │   ├── grant-officer.ts            # Cấp GuildOfficerCap
+│   │   ├── create-capsule.ts           # Tạo capsule (ARCHIVE/PRIVATE_INHERIT/DEAD_MAN)
+│   │   ├── claim-capsule.ts            # Claim capsule theo mode
+│   │   ├── heartbeat.ts                # Ping heartbeat (dead-man switch)
+│   │   ├── delete-capsule.ts           # Officer xóa capsule
+│   │   ├── vault-ids.ts                # Resolve vault object IDs từ env
+│   │   └── modules.ts                  # Module name constants
 │   ├── helpers/
 │   │   ├── gate.ts                      # Query gate OwnerCap
 │   │   ├── character.ts                 # Query character OwnerCap
@@ -102,6 +121,7 @@ builder-scaffold/
 | Blockchain | Sui (Layer 1) |
 | Smart Contract | Move 2024 edition |
 | Core dependency | `world-contracts` (EVE Frontier core) |
+| Wallet & Identity | EVE Vault (zkLogin, browser extension) |
 | Backend scripts | TypeScript, `@mysten/sui` SDK, `tsx` runner |
 | Frontend | React 19, Vite, Radix UI, `@evefrontier/dapp-kit`, `@mysten/dapp-kit-react` |
 | Auth | zkLogin (OAuth → ZK proof → Sui signature) |
@@ -135,6 +155,40 @@ builder-scaffold/
 ### storage_unit_extension
 - Template trống (`public fun template() {}`) — điểm bắt đầu cho extension mới
 
+### guild_time_vault
+
+5 module, sử dụng **capability pattern** cho role-based access control. Package address: `guild`.
+
+#### vault_core.move
+- `GuildVault` (shared) — lưu capsules trong `Table<u64, Capsule>`, auto-increment ID
+- `Capsule` — metadata: creator, mode (u8), unlock_time_ms, beneficiary, walrus_blob_id, seal_policy_id, claimed
+- `Heartbeat` — dead-man switch: vault_id, last_ping_ms, timeout_ms
+- Events: `CapsuleCreated`, `CapsuleClaimed`, `DeadManTriggered`
+- Modes: `ARCHIVE=0`, `PRIVATE_INHERIT=1`, `DEAD_MAN=2`
+- Internal helpers: `new_vault`, `new_capsule`, `new_heartbeat`, `share_vault`, `transfer_heartbeat`, `destroy_capsule`
+
+#### vault_roles.move
+- `GuildMemberCap { guild_id }` — cấp cho member
+- `GuildOfficerCap { guild_id }` — superset quyền, cấp cho officer/leader
+- `init_guild_vault()` — tạo vault (shared) + heartbeat + officer cap cho leader
+- `grant_member()` / `grant_officer()` — officer cấp cap cho address
+- `revoke_member()` / `revoke_officer()` — officer thu hồi cap
+
+#### vault_capsule_api.move
+- `create_capsule()` — member tạo capsule (kiểm tra guild_id match + unlock_time > now)
+- `create_capsule_as_officer()` — officer tạo capsule
+- `claim_archive()` — member claim ARCHIVE capsule sau unlock time
+- `claim_private_inherit()` — chỉ beneficiary claim sau unlock time
+- `delete_capsule()` — officer xóa capsule
+
+#### vault_heartbeat_api.move
+- `heartbeat()` — owner ping cập nhật last_ping_ms
+- `set_heartbeat_timeout()` — thay đổi timeout duration
+- `trigger_dead_man()` — officer trigger khi heartbeat timeout → claim DEAD_MAN capsule
+
+#### vault_views.move
+- View functions cho UI/indexer: `vault_guild_id`, `vault_capsule_count`, `get_capsule_mode`, `get_capsule_unlock_time`, `is_capsule_claimed`, `is_capsule_unlockable`, `is_heartbeat_timed_out`
+
 ### Dependency
 - `world-contracts` (local path hoặc git tag) — cung cấp `Gate`, `Character`, `StorageUnit`, `OwnerCap`, access control
 
@@ -144,6 +198,7 @@ builder-scaffold/
 
 ### Flow thực thi (thứ tự)
 
+#### smart_gate_extension
 ```
 1. configure-rules        → Admin set tribe config + bounty config
 2. authorise-gate-extension → Player A authorize XAuth trên 2 gate
@@ -151,6 +206,17 @@ builder-scaffold/
 4. issue-tribe-jump-permit → Player B request JumpPermit (tribe check)
 5. jump-with-permit        → Player B nhảy gate (sponsored tx, admin trả gas)
 6. collect-corpse-bounty   → Player B nộp bounty item → nhận JumpPermit (sponsored tx)
+```
+
+#### guild_time_vault
+```
+1. vault:init              → Leader tạo vault, nhận OfficerCap + Heartbeat
+2. vault:grant-member      → Officer cấp MemberCap cho member
+3. vault:grant-officer     → Officer cấp OfficerCap cho officer mới
+4. vault:create-capsule    → Member/Officer tạo capsule (MODE=0|1|2)
+5. vault:claim-capsule     → Claim capsule (CLAIM_MODE=archive|private_inherit|dead_man)
+6. vault:heartbeat         → Leader ping heartbeat giữ dead-man switch alive
+7. vault:delete-capsule    → Officer xóa capsule (cleanup)
 ```
 
 ### Utilities
@@ -233,9 +299,17 @@ EveFrontierProvider (queryClient)
 ```
 
 ### Components
-- **App.tsx**: Header + connect/disconnect button (`useConnection`, `useCurrentAccount`)
+- **App.tsx**: Header + connect/disconnect button (`useConnection`, `useCurrentAccount`) + VaultDashboard
 - **WalletStatus.tsx**: Hiển thị connected/disconnected, address, render AssemblyInfo
 - **AssemblyInfo.tsx**: `useSmartObject()` → hiển thị assembly name, type, state, ID, owner character
+
+### Vault UI Components (dapps/src/vault/)
+- **VaultDashboard.tsx**: Tab navigation (Overview / Create / Claim / Heartbeat), hiển thị vault info qua `getObjectWithJson()`
+- **CreateCapsuleForm.tsx**: Form tạo capsule — chọn mode, unlock date, beneficiary, cap ID → `dAppKit.signAndExecute()`
+- **ClaimCapsuleForm.tsx**: Form claim capsule — chọn claim mode (archive/private_inherit/dead_man), capsule ID → sign tx
+- **HeartbeatPanel.tsx**: Nút "Ping Now" gọi heartbeat contract
+- **config.ts**: Vault package/object IDs từ `VITE_*` env vars, module names, mode constants
+- **useVaultData.ts**: Hook fetch vault data qua GraphQL (`getObjectWithJson`)
 
 ### GraphQL Queries (queries.ts)
 - `getAssemblyWithOwner()` — assembly + character info
@@ -246,6 +320,38 @@ EveFrontierProvider (queryClient)
 - Dark theme (#0B0B0B background, #FAFAE5 text)
 - Custom fonts: Frontier Disket Mono (headings), Favorit (body)
 - Radix UI theme integration
+
+---
+
+## EVE Vault — Wallet & Identity
+
+EVE Vault là ví chính thức và identity manager cho EVE Frontier trên Sui. Docs: https://docs.evefrontier.com/eve-vault/wallets-and-identity
+
+### Chức năng chính
+- **Wallet**: Lưu trữ Sui assets (tokens, NFTs, game items)
+- **Identity**: Authentication hub cho dApps — chứng minh danh tính mà không lộ private key
+- **Single Sign-On**: Cài extension → approve prompt → kết nối dApp, không cần tạo account riêng
+- **zkLogin**: Tạo ví bằng EVE Frontier SSO account, không cần seed phrase. Zero-knowledge proof đảm bảo privacy
+
+### Tích hợp trong dApp
+- Sử dụng `@evefrontier/dapp-kit` + `@mysten/dapp-kit-react`
+- `EveFrontierProvider` wraps toàn bộ app
+- `useConnection()` → `{ isConnected, handleConnect, handleDisconnect }`
+- `useCurrentAccount()` → account address (từ `@mysten/dapp-kit-react`)
+- `useDAppKit()` → `signAndExecute({ transaction })` cho custom transactions
+
+### Tích hợp trong scripts (headless / CLI)
+- Scripts dùng `Ed25519Keypair` + `@mysten/sui` SDK trực tiếp (không qua EVE Vault UI)
+- Private key từ `.env` (`ADMIN_PRIVATE_KEY`, `PLAYER_A_PRIVATE_KEY`)
+- `client.signAndExecuteTransaction({ transaction, signer: keypair })` cho mọi tx
+- Sponsored transactions: player ký tx, admin trả gas (`executeSponsoredTransaction()`)
+
+### Identity Flow
+```
+In-Game:  EVE Vault → zkLogin → link character + assets on-chain
+Out-Game: EVE Vault extension → approve dApp connection → wallet as identity anchor
+Scripts:  Ed25519Keypair → sign tx → submit to Sui RPC
+```
 
 ---
 
@@ -316,6 +422,13 @@ PLAYER_B_PRIVATE_KEY=
 WORLD_PACKAGE_ID=                      # từ world-contracts deploy
 BUILDER_PACKAGE_ID=                    # từ publish custom contract
 EXTENSION_CONFIG_ID=                   # từ publish output
+VAULT_PACKAGE_ID=                      # từ publish guild_time_vault
+VAULT_OBJECT_ID=                       # từ init-vault output
+HEARTBEAT_OBJECT_ID=                   # từ init-vault output
+OFFICER_CAP_ID=                        # từ init-vault output
+MEMBER_CAP_ID=                         # từ grant-member output
+GUILD_ID=                              # address đại diện guild
+HEARTBEAT_TIMEOUT_MS=1209600000        # 14 ngày (default)
 TENANT=dev
 ```
 
@@ -346,14 +459,75 @@ TENANT=dev
 │    bun run issue-tribe-jump-permit                      │
 │    bun run jump-with-permit                             │
 │    bun run collect-corpse-bounty                        │
+│                                                         │
+│    Guild Time Vault:                                    │
+│    bun run vault:init                                   │
+│    bun run vault:grant-member                           │
+│    bun run vault:create-capsule                         │
+│    bun run vault:claim-capsule                          │
+│    bun run vault:heartbeat                              │
 ├─────────────────────────────────────────────────────────┤
 │ 5. FRONTEND (optional)                                  │
 │    cd dapps → bun install → bun run dev                 │
+│    Open http://localhost:5173/?tenant=utopia             │
 ├─────────────────────────────────────────────────────────┤
 │ 6. ZKLOGIN (optional)                                   │
 │    cd zklogin → bun install → bun run zklogin           │
 └─────────────────────────────────────────────────────────┘
 ```
+
+---
+
+## Testnet Deployment (Utopia)
+
+### Deployed Contract IDs (Sui Testnet)
+
+```
+VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
+VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd   (GuildVault - shared)
+HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
+OFFICER_CAP_ID=0x1e259c6e134da2331de2ba66f8ead29a8e5daddc467e88bd29e5b462db13bd8a
+DEPLOYER_ADDRESS=0xdfdd6484f7f94c80daefbfee06728f60236fde6bc229e30453306166a6b5691e
+```
+
+### Deploy guild_time_vault lên testnet
+
+```bash
+# 1. Ensure Sui CLI points to testnet
+sui client switch --env testnet
+
+# 2. Publish contract
+sui client publish move-contracts/guild_time_vault --gas-budget 100000000
+# → Note PackageID from output
+
+# 3. Init vault (guild_id = your address, timeout = 14 days)
+sui client call \
+  --package <VAULT_PACKAGE_ID> \
+  --module vault_roles \
+  --function init_guild_vault \
+  --args <YOUR_ADDRESS> 1209600000 0x6 \
+  --gas-budget 10000000
+# → Note GuildVault (shared), Heartbeat, GuildOfficerCap IDs from output
+```
+
+### Kết nối dApp với Utopia
+
+```bash
+# 1. Cập nhật dapps/.env
+VITE_VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
+VITE_VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd
+VITE_HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
+
+# 2. Chạy dApp
+cd dapps && bun run dev
+
+# 3. Mở browser
+# http://localhost:5173/?tenant=utopia
+```
+
+EVE Vault extension sẽ kết nối qua Sui testnet (cùng chain). User connect wallet → dApp nhận zkLogin address → tương tác vault contract.
+
+Lưu ý: ví Sui CLI (Ed25519) và ví EVE Vault (zkLogin) có address khác nhau. Sau khi connect EVE Vault, cần grant member/officer cap cho zkLogin address đó.
 
 ---
 
@@ -363,27 +537,33 @@ TENANT=dev
 User/Admin
     │
     ▼
-TypeScript Scripts (ts-scripts/)
-    │  Transaction builders
-    ▼
-Sui SDK (@mysten/sui)
-    │  JSON-RPC / sign+execute
-    ▼
-Sui Blockchain
+TypeScript Scripts (ts-scripts/)          dApp Frontend (React)
+    │  Transaction builders                    │  EVE Vault wallet
+    ▼                                          ▼
+Sui SDK (@mysten/sui)                     @mysten/dapp-kit-react
+    │  JSON-RPC / sign+execute                 │  signAndExecute
+    ▼                                          ▼
+Sui Blockchain (Testnet / Localnet)
     │  Move VM execution
-    ▼
-Smart Contracts (smart_gate_extension)
-    ├── Read: ExtensionConfig (tribe/bounty rules)
-    ├── Interact: Gate, StorageUnit, Character (world-contracts)
-    └── Write: JumpPermit, events, state changes
+    ├── smart_gate_extension
+    │   ├── Read: ExtensionConfig (tribe/bounty rules)
+    │   ├── Interact: Gate, StorageUnit, Character (world-contracts)
+    │   └── Write: JumpPermit, events
+    │
+    └── guild_time_vault
+        ├── GuildVault (shared) — capsules in Table
+        ├── Capabilities: GuildMemberCap, GuildOfficerCap
+        ├── Heartbeat — dead-man switch
+        └── Events: CapsuleCreated, CapsuleClaimed, DeadManTriggered
     │
     ▼
 GraphQL Indexer (optional, PostgreSQL)
     │
     ▼
 dApp Frontend (React)
-    ├── Display: Assembly info, wallet status
-    └── Trigger: Transactions via wallet
+    ├── VaultDashboard: overview, create, claim, heartbeat
+    ├── Assembly info, wallet status
+    └── EVE Vault connect (zkLogin)
 ```
 
 ---
@@ -391,11 +571,14 @@ dApp Frontend (React)
 ## Key Design Patterns
 
 1. **Typed Witness Pattern**: `XAuth` witness chỉ mint được trong package → authorize extension trên gate/storage unit
-2. **Dynamic Fields**: Config rules lưu dưới dạng dynamic fields trên shared `ExtensionConfig` object
-3. **Sponsored Transactions**: Admin trả gas cho player (dual signature: player + admin)
-4. **Object ID Derivation**: Game item ID → Sui object ID qua BCS serialize `TenantItemId` + `deriveObjectID`
-5. **Borrow-Return Pattern**: `borrow_owner_cap` → use → `return_owner_cap` (hot potato pattern)
-6. **Config Hydration**: Load `extracted-object-ids.json` từ deployments/ để fill world config tự động
+2. **Capability Pattern**: `GuildMemberCap` / `GuildOfficerCap` — role-based access control, không dùng address mapping
+3. **Dynamic Fields**: Config rules lưu dưới dạng dynamic fields trên shared `ExtensionConfig` object
+4. **Table-backed Collections**: `GuildVault.capsules` dùng `Table<u64, Capsule>` cho collection kích thước không giới hạn
+5. **Sponsored Transactions**: Admin trả gas cho player (dual signature: player + admin)
+6. **Object ID Derivation**: Game item ID → Sui object ID qua BCS serialize `TenantItemId` + `deriveObjectID`
+7. **Borrow-Return Pattern**: `borrow_owner_cap` → use → `return_owner_cap` (hot potato pattern)
+8. **Config Hydration**: Load `extracted-object-ids.json` từ deployments/ để fill world config tự động
+9. **EVE Vault Identity**: zkLogin-based wallet, dApp connect qua browser extension, scripts dùng Ed25519Keypair trực tiếp
 
 ---
 
@@ -428,6 +611,13 @@ dApp Frontend (React)
 | `bun run issue-tribe-jump-permit` | Cấp JumpPermit |
 | `bun run jump-with-permit` | Nhảy gate bằng permit |
 | `bun run collect-corpse-bounty` | Thu bounty + nhận permit |
+| `bun run vault:init` | Init Guild Vault |
+| `bun run vault:grant-member` | Cấp MemberCap |
+| `bun run vault:grant-officer` | Cấp OfficerCap |
+| `bun run vault:create-capsule` | Tạo capsule |
+| `bun run vault:claim-capsule` | Claim capsule |
+| `bun run vault:heartbeat` | Ping heartbeat |
+| `bun run vault:delete-capsule` | Xóa capsule |
 
 ---
 
@@ -435,9 +625,9 @@ dApp Frontend (React)
 
 | Loại | Số file |
 |------|---------|
-| Move contracts (.move) | 6 (3 sources + 2 tests + 1 template) |
-| TypeScript scripts (.ts) | 16 |
-| React components (.tsx) | 5 |
+| Move contracts (.move) | 12 (8 sources + 3 tests + 1 template) |
+| TypeScript scripts (.ts) | 25 |
+| React components (.tsx) | 11 (5 base + 6 vault) |
 | Shell scripts (.sh) | 4 |
-| Config files (json/toml/yaml) | 14 |
+| Config files (json/toml/yaml) | 15 |
 | Documentation (.md) | 12 |

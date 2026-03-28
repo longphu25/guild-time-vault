@@ -102,27 +102,7 @@ export function MyCapsules() {
         return toast.error("No member capability found");
       }
       await signAndExecuteTransaction({ transaction: tx });
-      toast.success("Capsule claimed!");
-
-      // Step 2: Decrypt content
-      const capsule = capsules.find((c) => c.capsule_id === capsuleId);
-      if (capsule && capsule.walrus_blob_id.length > 0) {
-        try {
-          const blobId = new TextDecoder().decode(new Uint8Array(capsule.walrus_blob_id));
-          const policy = parseSealPolicy(capsule);
-          if (policy.capsuleId === undefined || policy.capsuleId === null) {
-            throw new Error("Capsule encrypted with old format — cannot decrypt");
-          }
-          const encryptedData = await walrusDownload(blobId);
-
-          const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.capsuleId, policy.contextAddr, addr, signPersonalMessage, { memberCapId: memberCapId ?? capId });
-          const message = new TextDecoder().decode(decrypted);
-          setRevealedMessages((prev) => ({ ...prev, [capsuleId]: message }));
-          toast.success("Message decrypted!");
-        } catch (decErr: any) {
-          toast.error(`Claimed but decrypt failed: ${decErr.message}`);
-        }
-      }
+      toast.success("Capsule claimed! Click Reveal to decrypt the message.");
       refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to claim capsule");
@@ -150,7 +130,12 @@ export function MyCapsules() {
       const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: decryptCapId });
       setRevealedMessages((prev) => ({ ...prev, [capsuleId]: new TextDecoder().decode(decrypted) }));
     } catch (err: any) {
-      toast.error(err.message ?? "Failed to decrypt");
+      const msg = err.message ?? "Failed to decrypt";
+      if (msg.includes("does not have access")) {
+        toast.error("Access denied — only the designated beneficiary can decrypt this capsule.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setRevealingId(null);
     }

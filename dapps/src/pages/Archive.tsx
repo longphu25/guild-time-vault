@@ -57,7 +57,12 @@ export function Archive() {
       const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: decryptCapId });
       setRevealed((prev) => ({ ...prev, [capsuleId]: new TextDecoder().decode(decrypted) }));
     } catch (err: any) {
-      toast.error(err.message ?? "Failed to decrypt");
+      const msg = err.message ?? "Failed to decrypt";
+      if (msg.includes("does not have access")) {
+        toast.error("Access denied — you don't have permission to decrypt this capsule.");
+      } else {
+        toast.error(msg);
+      }
     } finally {
       setRevealing(null);
     }

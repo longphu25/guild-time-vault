@@ -1,7 +1,8 @@
-import { Box, Container, Flex, Heading } from "@radix-ui/themes";
+import { Box, Flex, Heading } from "@radix-ui/themes";
 import { WalletStatus } from "./WalletStatus";
 import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
+import { VaultDashboard } from "./vault/VaultDashboard";
 
 function App() {
   /**
@@ -31,6 +32,7 @@ function App() {
 
         {/* STEP 2 — Connect/disconnect; show abbreviated address in header. */}
         <button
+          type="button"
           onClick={() =>
             account?.address ? handleDisconnect() : handleConnect()
           }
@@ -40,6 +42,9 @@ function App() {
       </Flex>
       {/* STEP 3 — Same hooks (useConnection, useCurrentAccount) drive WalletStatus; state stays in sync. */}
       <WalletStatus />
+
+      {/* Guild Time Vault UI */}
+      <VaultDashboard />
     </Box>
   );
 }

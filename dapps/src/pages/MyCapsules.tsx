@@ -18,7 +18,7 @@ const modeLabel = (m: number) => m === CAPSULE_MODE.ARCHIVE ? "Archive" : m === 
 
 const tabCls = "px-4 py-2 text-[#94A3B8] hover:text-[#E2E8F0] transition-all data-[state=active]:text-[#00F0FF] data-[state=active]:border-b-2 data-[state=active]:border-[#00F0FF]";
 
-function CapsuleItem({ c, onClaim, revealedMessage }: { c: CapsuleData; onClaim?: (id: number, mode: number) => void; revealedMessage?: string }) {
+function CapsuleItem({ c, onClaim, onReveal, revealedMessage, revealing }: { c: CapsuleData; onClaim?: (id: number, mode: number) => void; onReveal?: (id: number) => void; revealedMessage?: string; revealing?: boolean }) {
   const now = Date.now();
   const unlockable = !c.claimed && now >= c.unlock_time_ms;
   const daysLeft = Math.ceil((c.unlock_time_ms - now) / 864e5);
@@ -48,10 +48,17 @@ function CapsuleItem({ c, onClaim, revealedMessage }: { c: CapsuleData; onClaim?
           </button>
         )}
       </div>
-      {/* Show decrypted message */}
-      {revealedMessage && (
+      {/* Show decrypted message or Reveal button */}
+      {c.claimed && (
         <div className="mt-3 pt-3 border-t border-[#2D2D3F]">
-          <p className="text-[#E2E8F0] italic">"{revealedMessage}"</p>
+          {revealedMessage ? (
+            <p className="text-[#E2E8F0] italic">"{revealedMessage}"</p>
+          ) : onReveal ? (
+            <button onClick={() => onReveal(c.capsule_id)} disabled={revealing}
+              className="flex items-center gap-2 px-3 py-1.5 bg-[#00F0FF]/10 border border-[#00F0FF]/30 rounded text-sm text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all disabled:opacity-50">
+              {revealing ? "Decrypting..." : "Reveal Message"}
+            </button>
+          ) : null}
         </div>
       )}
     </div>
@@ -62,7 +69,7 @@ export function MyCapsules() {
   const [tab, setTab] = useState("all");
   const account = useCurrentAccount();
   const { capsules, role, capId, loading, refetch } = useVault();
-  const { signAndExecuteTransaction } = useDAppKit();
+  const { signAndExecuteTransaction, signPersonalMessage } = useDAppKit();
 
   const addr = account?.address ?? "";
   const myCreated = capsules.filter((c) => c.creator === addr);
@@ -70,6 +77,7 @@ export function MyCapsules() {
   const claimed = capsules.filter((c) => c.claimed);
 
   const [revealedMessages, setRevealedMessages] = useState<Record<number, string>>({});
+  const [revealingId, setRevealingId] = useState<number | null>(null);
 
   const handleClaim = async (capsuleId: number, mode: number) => {
     try {
@@ -97,7 +105,7 @@ export function MyCapsules() {
           const encryptedData = await walrusDownload(blobId);
 
           // Decrypt with Seal
-          const decrypted = await sealDecrypt(encryptedData, unlockTimeMs);
+          const decrypted = await sealDecrypt(encryptedData, unlockTimeMs, addr, signPersonalMessage);
           const message = new TextDecoder().decode(decrypted);
           setRevealedMessages((prev) => ({ ...prev, [capsuleId]: message }));
           toast.success("Message decrypted!");
@@ -108,6 +116,24 @@ export function MyCapsules() {
       refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to claim capsule");
+    }
+  };
+
+  const handleReveal = async (capsuleId: number) => {
+    const capsule = capsules.find((c) => c.capsule_id === capsuleId);
+    if (!capsule || !account) return;
+    setRevealingId(capsuleId);
+    try {
+      const blobId = new TextDecoder().decode(new Uint8Array(capsule.walrus_blob_id));
+      const policyStr = new TextDecoder().decode(new Uint8Array(capsule.seal_policy_id));
+      const unlockTimeMs = parseInt(policyStr, 10);
+      const encryptedData = await walrusDownload(blobId);
+      const decrypted = await sealDecrypt(encryptedData, unlockTimeMs, account.address, signPersonalMessage);
+      setRevealedMessages((prev) => ({ ...prev, [capsuleId]: new TextDecoder().decode(decrypted) }));
+    } catch (err: any) {
+      toast.error(err.message ?? "Failed to decrypt");
+    } finally {
+      setRevealingId(null);
     }
   };
 
@@ -139,7 +165,7 @@ export function MyCapsules() {
               ].map(({ value, data }) => (
                 <Tabs.Content key={value} value={value} className="space-y-4">
                   {data.length > 0 ? data.map((c) => (
-                    <CapsuleItem key={c.capsule_id} c={c} onClaim={handleClaim} revealedMessage={revealedMessages[c.capsule_id]} />
+                    <CapsuleItem key={c.capsule_id} c={c} onClaim={handleClaim} onReveal={handleReveal} revealedMessage={revealedMessages[c.capsule_id]} revealing={revealingId === c.capsule_id} />
                   )) : (
                     <div className="text-center py-16">
                       <PackagePlus className="w-16 h-16 text-[#94A3B8] mx-auto mb-4" />

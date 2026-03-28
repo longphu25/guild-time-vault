@@ -13,7 +13,14 @@
     "authorise-storage-unit-extension": "bun ts-scripts/smart_gate_extension/authorise-storage-unit-extension.ts",
     "issue-tribe-jump-permit": "bun ts-scripts/smart_gate_extension/issue-tribe-jump-permit.ts",
     "jump-with-permit": "bun ts-scripts/smart_gate_extension/jump-with-permit.ts",
-    "collect-corpse-bounty": "bun ts-scripts/smart_gate_extension/collect-corpse-bounty.ts"
+    "collect-corpse-bounty": "bun ts-scripts/smart_gate_extension/collect-corpse-bounty.ts",
+    "vault:init": "bun ts-scripts/guild_time_vault/init-vault.ts",
+    "vault:grant-member": "bun ts-scripts/guild_time_vault/grant-member.ts",
+    "vault:grant-officer": "bun ts-scripts/guild_time_vault/grant-officer.ts",
+    "vault:create-capsule": "bun ts-scripts/guild_time_vault/create-capsule.ts",
+    "vault:claim-capsule": "bun ts-scripts/guild_time_vault/claim-capsule.ts",
+    "vault:heartbeat": "bun ts-scripts/guild_time_vault/heartbeat.ts",
+    "vault:delete-capsule": "bun ts-scripts/guild_time_vault/delete-capsule.ts"
   },
   "dependencies": {
     "@mysten/sui": "^2.0.0",

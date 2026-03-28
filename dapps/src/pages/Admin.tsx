@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Heart, UserPlus, Shield } from "lucide-react";
+import { Heart, UserPlus, Shield, Users } from "lucide-react";
 import { toast } from "sonner";
 import { useDAppKit } from "@mysten/dapp-kit-react";
 import { WalletGate } from "@/components/capsule/WalletGate";
@@ -7,7 +7,7 @@ import { useVault } from "@/hooks/use-vault";
 import { buildHeartbeatTx, buildGrantMemberTx, buildGrantOfficerTx } from "@/lib/vault-tx";
 
 export function Admin() {
-  const { role, capId, heartbeat, refetch } = useVault();
+  const { role, capId, heartbeat, members, refetch } = useVault();
   const { signAndExecuteTransaction } = useDAppKit();
   const [memberAddr, setMemberAddr] = useState("");
   const [grantType, setGrantType] = useState<"member" | "officer">("member");
@@ -105,6 +105,27 @@ export function Admin() {
                     <UserPlus className="w-4 h-4" /> Grant {grantType === "officer" ? "Officer" : "Member"} Cap
                   </button>
                 </div>
+              </div>
+
+              {/* Members List */}
+              <div className="bg-[#1A1A2E]/80 border border-[#2D2D3F] rounded-lg p-6">
+                <h2 className="text-xl font-heading text-[#E2E8F0] mb-4 flex items-center gap-2">
+                  <Users className="w-5 h-5 text-[#A855F7]" /> Guild Members ({members.length})
+                </h2>
+                {members.length > 0 ? (
+                  <div className="space-y-2">
+                    {members.map((m) => (
+                      <div key={m.capId} className="flex items-center justify-between px-4 py-3 bg-[#0A0A0F]/50 rounded-lg">
+                        <span className="text-[#00F0FF] font-mono text-sm">{m.address.slice(0, 10)}...{m.address.slice(-6)}</span>
+                        <span className={`text-xs px-2 py-1 rounded ${m.role === "officer" ? "bg-[#F59E0B]/20 text-[#F59E0B]" : "bg-[#3B82F6]/20 text-[#3B82F6]"}`}>
+                          {m.role.toUpperCase()}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <p className="text-[#94A3B8] text-sm">No members found</p>
+                )}
               </div>
             </div>
           )}

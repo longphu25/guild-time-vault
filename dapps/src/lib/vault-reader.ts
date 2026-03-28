@@ -2,6 +2,8 @@ import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { vaultConfig } from "./vault-config";
 import { TYPES } from "./contract";
 
+const GQL = "https://graphql.testnet.sui.io/graphql";
+
 const client = new SuiGrpcClient({
   network: "testnet",
   baseUrl: "https://fullnode.testnet.sui.io:443",
@@ -120,4 +122,40 @@ export async function detectUserRole(address: string): Promise<{ role: UserRole;
 
   const role: UserRole = officerCapId ? "officer" : memberCapId ? "member" : "guest";
   return { role, capId: officerCapId ?? memberCapId, memberCapId, officerCapId };
+}
+
+export interface GuildMember {
+  address: string;
+  role: "member" | "officer";
+  capId: string;
+  guildId: string;
+}
+
+async function queryCapsByType(type: string): Promise<GuildMember[]> {
+  const role = type.includes("Officer") ? "officer" as const : "member" as const;
+  const res = await fetch(GQL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: `{ objects(filter: { type: "${type}" }) { nodes { address owner { ... on AddressOwner { address { address } } } asMoveObject { contents { json } } } } }`,
+    }),
+  });
+  const json = await res.json();
+  return (json.data?.objects?.nodes ?? []).map((n: any) => ({
+    address: n.owner?.address?.address ?? "",
+    role,
+    capId: n.address,
+    guildId: n.asMoveObject?.contents?.json?.guild_id ?? "",
+  }));
+}
+
+export async function fetchGuildMembers(): Promise<GuildMember[]> {
+  const [members, officers] = await Promise.all([
+    queryCapsByType(TYPES.memberCap),
+    queryCapsByType(TYPES.officerCap),
+  ]);
+  // Filter by current vault's guild_id
+  const vaultData = await fetchVault();
+  const guildId = vaultData?.guild_id ?? "";
+  return [...officers, ...members].filter((m) => m.guildId === guildId);
 }

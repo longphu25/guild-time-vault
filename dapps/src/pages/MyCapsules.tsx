@@ -28,10 +28,29 @@ const modeLabel = (m: number) => m === CAPSULE_MODE.ARCHIVE ? "Archive" : m === 
 
 const tabCls = "px-4 py-2 text-[#94A3B8] hover:text-[#E2E8F0] transition-all data-[state=active]:text-[#00F0FF] data-[state=active]:border-b-2 data-[state=active]:border-[#00F0FF]";
 
-function CapsuleItem({ c, onClaim, onReveal, revealedMessage, revealing }: { c: CapsuleData; onClaim?: (id: number, mode: number) => void; onReveal?: (id: number) => void; revealedMessage?: string; revealing?: boolean }) {
+function CapsuleItem({ c, onClaim, onReveal, revealedMessage, revealing, userAddr, hasMemberCap }: {
+  c: CapsuleData; onClaim?: (id: number, mode: number) => void; onReveal?: (id: number) => void;
+  revealedMessage?: string; revealing?: boolean; userAddr?: string; hasMemberCap?: boolean;
+}) {
   const now = Date.now();
   const unlockable = !c.claimed && now >= c.unlock_time_ms;
   const daysLeft = Math.ceil((c.unlock_time_ms - now) / 864e5);
+  const zeroBenef = "0x0000000000000000000000000000000000000000000000000000000000000000";
+  const isBeneficiary = c.beneficiary && c.beneficiary !== zeroBenef && c.beneficiary === userAddr;
+
+  // Can this user claim?
+  const canClaim = unlockable && (
+    c.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap :
+    c.mode === CAPSULE_MODE.PRIVATE_INHERIT ? true : // anyone can claim
+    false // DEAD_MAN handled via trigger
+  );
+
+  // Can this user decrypt?
+  const canReveal = c.claimed && (
+    c.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap :
+    c.mode === CAPSULE_MODE.PRIVATE_INHERIT ? isBeneficiary :
+    true // DEAD_MAN — anyone with access after trigger
+  );
 
   return (
     <div className="bg-[#1A1A2E]/80 backdrop-blur-md border border-[#2D2D3F] rounded-lg p-4 hover:border-[#00F0FF]/30 transition-all">
@@ -52,7 +71,7 @@ function CapsuleItem({ c, onClaim, onReveal, revealedMessage, revealing }: { c: 
             )}
           </div>
         </div>
-        {unlockable && onClaim && (
+        {canClaim && onClaim && (
           <button onClick={() => onClaim(c.capsule_id, c.mode)} className="px-4 py-2 bg-[#00F0FF] text-[#0A0A0F] rounded text-sm hover:drop-shadow-[0_0_12px_rgba(0,240,255,0.8)] transition-all">
             Open
           </button>
@@ -63,7 +82,7 @@ function CapsuleItem({ c, onClaim, onReveal, revealedMessage, revealing }: { c: 
         <div className="mt-3 pt-3 border-t border-[#2D2D3F]">
           {revealedMessage ? (
             <p className="text-[#E2E8F0] italic">"{revealedMessage}"</p>
-          ) : onReveal ? (
+          ) : canReveal && onReveal ? (
             <button onClick={() => onReveal(c.capsule_id)} disabled={revealing}
               className="flex items-center gap-2 px-3 py-1.5 bg-[#00F0FF]/10 border border-[#00F0FF]/30 rounded text-sm text-[#00F0FF] hover:bg-[#00F0FF]/20 transition-all disabled:opacity-50">
               {revealing ? "Decrypting..." : "Reveal Message"}
@@ -104,8 +123,13 @@ export function MyCapsules() {
       } else {
         return toast.error("No member capability found");
       }
-      await signAndExecuteTransaction({ transaction: tx });
+      const result = await signAndExecuteTransaction({ transaction: tx });
       toast.success("Capsule claimed! Click Reveal to decrypt the message.");
+      const digest = (result as any)?.Transaction?.digest ?? (result as any)?.digest;
+      if (digest) {
+        const { client } = await import("@/lib/vault-reader");
+        await client.waitForTransaction({ digest });
+      }
       refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Failed to claim capsule");
@@ -172,7 +196,7 @@ export function MyCapsules() {
               ].map(({ value, data }) => (
                 <Tabs.Content key={value} value={value} className="space-y-4">
                   {data.length > 0 ? data.map((c) => (
-                    <CapsuleItem key={c.capsule_id} c={c} onClaim={handleClaim} onReveal={handleReveal} revealedMessage={revealedMessages[c.capsule_id]} revealing={revealingId === c.capsule_id} />
+                    <CapsuleItem key={c.capsule_id} c={c} onClaim={handleClaim} onReveal={handleReveal} revealedMessage={revealedMessages[c.capsule_id]} revealing={revealingId === c.capsule_id} userAddr={addr} hasMemberCap={!!memberCapId} />
                   )) : (
                     <div className="text-center py-16">
                       <PackagePlus className="w-16 h-16 text-[#94A3B8] mx-auto mb-4" />

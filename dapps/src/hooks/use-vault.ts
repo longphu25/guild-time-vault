@@ -6,16 +6,19 @@ import {
   fetchCapsules,
   fetchHeartbeat,
   detectUserRole,
+  fetchGuildMembers,
   type CapsuleData,
   type VaultData,
   type HeartbeatData,
   type UserRole,
+  type GuildMember,
 } from "@/lib/vault-reader";
 
 export interface VaultState {
   vault: VaultData | null;
   capsules: CapsuleData[];
   heartbeat: HeartbeatData | null;
+  members: GuildMember[];
   role: UserRole;
   capId?: string;
   memberCapId?: string;
@@ -58,17 +61,25 @@ export function useVault(): VaultState {
     staleTime: 60_000,
   });
 
+  const membersQuery = useQuery({
+    queryKey: ["members"],
+    queryFn: fetchGuildMembers,
+    staleTime: 60_000,
+  });
+
   const refetch = useCallback(() => {
     vaultQuery.refetch();
     capsulesQuery.refetch();
     heartbeatQuery.refetch();
     roleQuery.refetch();
-  }, [vaultQuery, capsulesQuery, heartbeatQuery, roleQuery]);
+    membersQuery.refetch();
+  }, [vaultQuery, capsulesQuery, heartbeatQuery, roleQuery, membersQuery]);
 
   return {
     vault: vaultQuery.data ?? null,
     capsules: capsulesQuery.data ?? [],
     heartbeat: heartbeatQuery.data ?? null,
+    members: membersQuery.data ?? [],
     role: roleQuery.data?.role ?? "guest",
     capId: roleQuery.data?.capId,
     memberCapId: roleQuery.data?.memberCapId,

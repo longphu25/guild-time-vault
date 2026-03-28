@@ -12,6 +12,16 @@ import type { CapsuleData } from "@/lib/vault-reader";
 import { walrusDownload } from "@/lib/walrus-client";
 import { sealDecrypt } from "@/lib/seal-client";
 
+function parseSealPolicy(capsule: CapsuleData): { mode: number; unlockTimeMs: number; guildId: string } {
+  try {
+    const str = new TextDecoder().decode(new Uint8Array(capsule.seal_policy_id));
+    const parsed = JSON.parse(str);
+    return { mode: parsed.mode, unlockTimeMs: parsed.unlockTimeMs, guildId: parsed.guildId };
+  } catch {
+    return { mode: capsule.mode, unlockTimeMs: capsule.unlock_time_ms, guildId: "" };
+  }
+}
+
 const truncate = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`;
 const fmtDate = (ms: number) => new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 const modeLabel = (m: number) => m === CAPSULE_MODE.ARCHIVE ? "Archive" : m === CAPSULE_MODE.PRIVATE_INHERIT ? "Inheritance" : "Dead Man";
@@ -98,14 +108,10 @@ export function MyCapsules() {
       if (capsule && capsule.walrus_blob_id.length > 0) {
         try {
           const blobId = new TextDecoder().decode(new Uint8Array(capsule.walrus_blob_id));
-          const policyStr = new TextDecoder().decode(new Uint8Array(capsule.seal_policy_id));
-          const unlockTimeMs = parseInt(policyStr, 10);
-
-          // Download from Walrus
+          const policy = parseSealPolicy(capsule);
           const encryptedData = await walrusDownload(blobId);
 
-          // Decrypt with Seal
-          const decrypted = await sealDecrypt(encryptedData, unlockTimeMs, addr, signPersonalMessage);
+          const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.unlockTimeMs, policy.guildId, addr, signPersonalMessage, { memberCapId: capId });
           const message = new TextDecoder().decode(decrypted);
           setRevealedMessages((prev) => ({ ...prev, [capsuleId]: message }));
           toast.success("Message decrypted!");
@@ -125,10 +131,9 @@ export function MyCapsules() {
     setRevealingId(capsuleId);
     try {
       const blobId = new TextDecoder().decode(new Uint8Array(capsule.walrus_blob_id));
-      const policyStr = new TextDecoder().decode(new Uint8Array(capsule.seal_policy_id));
-      const unlockTimeMs = parseInt(policyStr, 10);
+      const policy = parseSealPolicy(capsule);
       const encryptedData = await walrusDownload(blobId);
-      const decrypted = await sealDecrypt(encryptedData, unlockTimeMs, account.address, signPersonalMessage);
+      const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.unlockTimeMs, policy.guildId, account.address, signPersonalMessage, { memberCapId: capId });
       setRevealedMessages((prev) => ({ ...prev, [capsuleId]: new TextDecoder().decode(decrypted) }));
     } catch (err: any) {
       toast.error(err.message ?? "Failed to decrypt");

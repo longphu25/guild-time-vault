@@ -1,7 +1,7 @@
 # Guild Time Vault — On-Chain Contract Reference
 
 ## Package
-`0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc`
+`0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc`
 
 Network: **Sui Testnet**
 
@@ -117,6 +117,16 @@ Network: **Sui Testnet**
 - `revoke_member(&GuildOfficerCap, &GuildVault, GuildMemberCap)` [public]
 - `revoke_officer(&GuildOfficerCap, &GuildVault, GuildOfficerCap)` [public]
 
+### vault_seal *(NEW)*
+
+Seal access control module — defines `seal_approve*` functions for each capsule mode.
+
+**Functions:**
+- `build_identity(U8, U64, Address)` [public] — builds Seal identity from mode + unlock_time + guild_id
+- `seal_approve_archive(vector<U8>, &GuildVault, &GuildMemberCap, &Clock)` [entry private] — approve decrypt for ARCHIVE mode (requires MemberCap + time check)
+- `seal_approve_dead_man(vector<U8>, &GuildVault, &Heartbeat, &Clock)` [entry private] — approve decrypt for DEAD_MAN mode (requires heartbeat timeout)
+- `seal_approve_private_inherit(vector<U8>, &GuildVault, &Clock, &TxContext)` [entry private] — approve decrypt for PRIVATE_INHERIT mode (requires beneficiary match + time check)
+
 ### vault_views
 
 **Functions:**
@@ -133,24 +143,6 @@ Network: **Sui Testnet**
 
 ---
 
-## Deployed Objects (Your Vault)
-
-| Object | Type | ID |
-|--------|------|---|
-| GuildVault (shared) | vault_core::GuildVault | `0x8be556f0f37eae7d1f3dcb5e62be2fb716570b49534709979e71913bb233a8da` |
-| Heartbeat | vault_core::Heartbeat | `0x654a2592f35d1bbd79a01ce294525fccc960b019abcde60bfc2f7a63a71264c5` |
-| OfficerCap | vault_roles::GuildOfficerCap | `0x4f61ded332711c79e6fe6d0ae2ac12134c511736bb55abe191df75e65d969b28` |
-
-## Original Deploy Objects
-
-| Object | Type | ID |
-|--------|------|---|
-| GuildVault (shared) | vault_core::GuildVault | `0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd` |
-| Heartbeat | vault_core::Heartbeat | `0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba` |
-| OfficerCap | vault_roles::GuildOfficerCap | `0x1e259c6e134da2331de2ba66f8ead29a8e5daddc467e88bd29e5b462db13bd8a` |
-
----
-
 ## Capsule Modes
 
 | Mode | Value | Description |
@@ -159,6 +151,16 @@ Network: **Sui Testnet**
 | PRIVATE_INHERIT | 1 | Only beneficiary address can read after unlock time |
 | DEAD_MAN | 2 | Officer can read when heartbeat timeout expires |
 
+## Seal Identity Format
+
+`build_identity(mode, unlock_time_ms, guild_id)` constructs the Seal policy identity used for encryption/decryption. Each `seal_approve_*` function verifies different conditions:
+
+| Function | Checks |
+|----------|--------|
+| `seal_approve_archive` | Caller has MemberCap for guild + Clock >= unlock_time |
+| `seal_approve_private_inherit` | Caller is beneficiary + Clock >= unlock_time |
+| `seal_approve_dead_man` | Heartbeat timed out (now - last_ping > timeout) |
+
 ## Key Patterns
 
 - **Capability Pattern**: `GuildMemberCap` / `GuildOfficerCap` control access (not address lists)
@@ -166,3 +168,4 @@ Network: **Sui Testnet**
 - **Heartbeat**: Leader must ping periodically; if `now - last_ping > timeout`, dead man capsules become claimable
 - **Shared Object**: `GuildVault` is shared — all guild members interact with same vault
 - **Dynamic Fields**: Capsules stored in `Table<u64, Capsule>` on vault
+- **Seal Integration**: `vault_seal` module provides on-chain access control for Seal threshold encryption

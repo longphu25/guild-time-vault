@@ -6,6 +6,7 @@ const MOD = {
   capsuleApi: "vault_capsule_api",
   heartbeatApi: "vault_heartbeat_api",
   views: "vault_views",
+  seal: "vault_seal",
 } as const;
 
 const target = (module: string, fn: string) =>
@@ -30,6 +31,11 @@ export const TX = {
   grantOfficer: target(MOD.roles, "grant_officer"),
   revokeMember: target(MOD.roles, "revoke_member"),
   revokeOfficer: target(MOD.roles, "revoke_officer"),
+  // Seal
+  buildIdentity: target(MOD.seal, "build_identity"),
+  sealApproveArchive: target(MOD.seal, "seal_approve_archive"),
+  sealApprovePrivateInherit: target(MOD.seal, "seal_approve_private_inherit"),
+  sealApproveDeadMan: target(MOD.seal, "seal_approve_dead_man"),
 } as const;
 
 export const TYPES = {

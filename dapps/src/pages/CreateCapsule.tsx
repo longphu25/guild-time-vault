@@ -21,7 +21,7 @@ export function CreateCapsule() {
   const dAppKit = useDAppKit();
   const { signAndExecuteTransaction } = dAppKit;
   const account = useCurrentAccount();
-  const { role, capId, refetch } = useVault();
+  const { role, capId, vault, refetch } = useVault();
 
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
@@ -50,7 +50,7 @@ export function CreateCapsule() {
 
       // Step 1: Seal encrypt
       setProgress("Encrypting with Seal...");
-      const encryptedData = await sealEncrypt(plaintext, unlockTimeMs);
+      const encryptedData = await sealEncrypt(plaintext, mode, unlockTimeMs, vault?.guild_id ?? account!.address);
 
       // Step 2: Walrus upload (auto-swaps SUI→WAL if needed)
       const { blobId } = await walrusUpload(
@@ -67,7 +67,7 @@ export function CreateCapsule() {
       // Step 3: On-chain create_capsule
       setProgress("Submitting transaction...");
       const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
-      const sealPolicyBytes = Array.from(new TextEncoder().encode(unlockTimeMs.toString()));
+      const sealPolicyBytes = Array.from(new TextEncoder().encode(JSON.stringify({ mode, unlockTimeMs, guildId: vault?.guild_id ?? account!.address })));
 
       const tx = buildCreateCapsuleTx({
         capId: capId,

@@ -18,6 +18,7 @@ export interface VaultState {
   heartbeat: HeartbeatData | null;
   role: UserRole;
   capId?: string;
+  memberCapId?: string;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -64,6 +65,7 @@ export function useVault(): VaultState {
     heartbeat: heartbeatQuery.data ?? null,
     role: roleQuery.data?.role ?? "guest",
     capId: roleQuery.data?.capId,
+    memberCapId: roleQuery.data?.memberCapId,
     loading: vaultQuery.isLoading || capsulesQuery.isLoading || heartbeatQuery.isLoading,
     error: vaultQuery.error?.message ?? capsulesQuery.error?.message ?? null,
     refetch,

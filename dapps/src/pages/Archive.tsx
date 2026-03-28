@@ -8,13 +8,13 @@ import { sealDecrypt } from "@/lib/seal-client";
 import { toast } from "sonner";
 import type { CapsuleData } from "@/lib/vault-reader";
 
-function parseSealPolicy(capsule: CapsuleData): { mode: number; unlockTimeMs: number; guildId: string } {
+function parseSealPolicy(capsule: CapsuleData): { mode: number; capsuleId: number; contextAddr: string } {
   try {
     const str = new TextDecoder().decode(new Uint8Array(capsule.seal_policy_id));
     const parsed = JSON.parse(str);
-    return { mode: parsed.mode, unlockTimeMs: parsed.unlockTimeMs, guildId: parsed.guildId };
+    return { mode: parsed.mode, capsuleId: parsed.capsuleId, contextAddr: parsed.contextAddr };
   } catch {
-    return { mode: capsule.mode, unlockTimeMs: capsule.unlock_time_ms, guildId: "" };
+    return { mode: capsule.mode, capsuleId: capsule.capsule_id, contextAddr: "" };
   }
 }
 
@@ -22,14 +22,14 @@ const truncate = (a: string) => `${a.slice(0, 6)}...${a.slice(-4)}`;
 const fmtDate = (ms: number) => new Intl.DateTimeFormat("en-US", { year: "numeric", month: "short", day: "numeric", hour: "2-digit", minute: "2-digit" }).format(new Date(ms));
 
 export function Archive() {
-  const { capsules, loading, capId } = useVault();
+  const { capsules, loading, capId, memberCapId, role } = useVault();
   const { signPersonalMessage } = useDAppKit();
   const account = useCurrentAccount();
   const [q, setQ] = useState("");
   const [revealed, setRevealed] = useState<Record<number, string>>({});
   const [revealing, setRevealing] = useState<number | null>(null);
 
-  const claimed = capsules.filter((c) => c.claimed);
+  const claimed = capsules.filter((c) => c.claimed).sort((a, b) => b.unlock_time_ms - a.unlock_time_ms);
   const filtered = claimed.filter((c) => {
     if (!q) return true;
     const s = q.toLowerCase();
@@ -40,12 +40,21 @@ export function Archive() {
   const handleReveal = async (capsuleId: number) => {
     const capsule = capsules.find((c) => c.capsule_id === capsuleId);
     if (!capsule || !account) return;
+
+    if (capsule.mode === CAPSULE_MODE.ARCHIVE && role === "officer" && !memberCapId) {
+      return toast.error("Officers need a MemberCap to decrypt. Grant yourself one in Admin.");
+    }
+
     setRevealing(capsuleId);
     try {
       const blobId = new TextDecoder().decode(new Uint8Array(capsule.walrus_blob_id));
       const policy = parseSealPolicy(capsule);
+      if (policy.capsuleId === undefined || policy.capsuleId === null) {
+        throw new Error("Capsule encrypted with old format — cannot decrypt");
+      }
+      const decryptCapId = memberCapId ?? capId;
       const encryptedData = await walrusDownload(blobId);
-      const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.unlockTimeMs, policy.guildId, account.address, signPersonalMessage, { memberCapId: capId });
+      const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: decryptCapId });
       setRevealed((prev) => ({ ...prev, [capsuleId]: new TextDecoder().decode(decrypted) }));
     } catch (err: any) {
       toast.error(err.message ?? "Failed to decrypt");

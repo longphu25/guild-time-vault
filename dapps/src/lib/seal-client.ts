@@ -41,17 +41,22 @@ function getSealClient(): SealClient {
 }
 
 /**
- * Build Seal identity matching on-chain build_identity(mode, unlock_time_ms, guild_id).
- * Format: BCS(mode as u8) + BCS(unlock_time_ms as u64) + BCS(guild_id as address)
+ * Build Seal identity matching on-chain build_identity(mode, capsule_id, context_addr).
+ * Format: [mode:u8][capsule_id:u64_bcs][context_addr:address_bcs]
+ *
+ * context_addr depends on mode:
+ *   ARCHIVE:         guild_id
+ *   PRIVATE_INHERIT: beneficiary
+ *   DEAD_MAN:        vault_id (object address)
  */
-function buildIdentityHex(mode: number, unlockTimeMs: number, guildId: string): string {
+function buildIdentityHex(mode: number, capsuleId: number, contextAddr: string): string {
   const modeBytes = bcs.u8().serialize(mode).toBytes();
-  const timeBytes = bcs.u64().serialize(BigInt(unlockTimeMs)).toBytes();
-  const addrBytes = bcs.Address.serialize(guildId).toBytes();
-  const combined = new Uint8Array(modeBytes.length + timeBytes.length + addrBytes.length);
+  const idBytes = bcs.u64().serialize(BigInt(capsuleId)).toBytes();
+  const addrBytes = bcs.Address.serialize(contextAddr).toBytes();
+  const combined = new Uint8Array(modeBytes.length + idBytes.length + addrBytes.length);
   combined.set(modeBytes, 0);
-  combined.set(timeBytes, modeBytes.length);
-  combined.set(addrBytes, modeBytes.length + timeBytes.length);
+  combined.set(idBytes, modeBytes.length);
+  combined.set(addrBytes, modeBytes.length + idBytes.length);
   return toHex(combined);
 }
 
@@ -59,14 +64,14 @@ function buildIdentityHex(mode: number, unlockTimeMs: number, guildId: string): 
 export async function sealEncrypt(
   data: Uint8Array,
   mode: number,
-  unlockTimeMs: number,
-  guildId: string,
+  capsuleId: number,
+  contextAddr: string,
 ): Promise<Uint8Array> {
   const client = getSealClient();
   const result = await client.encrypt({
     threshold: 2,
     packageId: vaultConfig.packageId,
-    id: buildIdentityHex(mode, unlockTimeMs, guildId),
+    id: buildIdentityHex(mode, capsuleId, contextAddr),
     data,
   });
   return result.encryptedObject;
@@ -74,13 +79,12 @@ export async function sealEncrypt(
 
 /**
  * Decrypt data using Seal. Builds correct seal_approve_* tx based on mode.
- * User signs session key via wallet popup.
  */
 export async function sealDecrypt(
   encryptedData: Uint8Array,
   mode: number,
-  unlockTimeMs: number,
-  guildId: string,
+  capsuleId: number,
+  contextAddr: string,
   userAddress: string,
   signPersonalMessage: (args: { message: Uint8Array }) => Promise<{ signature: string }>,
   opts?: { memberCapId?: string },
@@ -99,8 +103,11 @@ export async function sealDecrypt(
   sessionKey.setPersonalMessageSignature(signature);
 
   // Build seal_approve tx based on mode
-  const idHex = buildIdentityHex(mode, unlockTimeMs, guildId);
-  const idBytes = Array.from(new Uint8Array(Buffer.from(idHex, "hex")));
+  const idHex = buildIdentityHex(mode, capsuleId, contextAddr);
+  const idBytes: number[] = [];
+  for (let i = 0; i < idHex.length; i += 2) {
+    idBytes.push(parseInt(idHex.substring(i, i + 2), 16));
+  }
   const tx = new Transaction();
 
   if (mode === CAPSULE_MODE.ARCHIVE) {
@@ -135,6 +142,7 @@ export async function sealDecrypt(
     });
   }
 
+  tx.setSender(userAddress);
   const txBytes = await tx.build({ client: suiClient, onlyTransactionKind: true });
   return client.decrypt({ data: encryptedData, sessionKey, txBytes });
 }

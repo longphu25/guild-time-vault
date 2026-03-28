@@ -41,16 +41,30 @@ export function CreateCapsule() {
     if (daysUntil === null || daysUntil < 1) return toast.error("Unlock date must be at least 1 day in the future");
     if (mode === CAPSULE_MODE.PRIVATE_INHERIT && (!beneficiary.trim() || !beneficiary.startsWith("0x")))
       return toast.error("Please enter a valid beneficiary address");
+    const storageDaysNum = parseInt(storageDays) || 5;
+    if (daysUntil !== null && storageDaysNum < daysUntil)
+      return toast.error(`Storage duration (${storageDaysNum}d) must be ≥ unlock time (${daysUntil}d)`);
     if (!capId) return toast.error("No member/officer capability found. Ask an officer to grant you access.");
 
     setIsSubmitting(true);
     try {
       const unlockTimeMs = new Date(unlockDate).getTime();
       const plaintext = new TextEncoder().encode(message);
+      const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
+
+      // Predict capsule_id (next_capsule_id from vault)
+      const capsuleId = vault?.next_capsule_id ?? 0;
+      const guildId = vault?.guild_id ?? account!.address;
+
+      // Context address depends on mode
+      const { vaultConfig } = await import("@/lib/vault-config");
+      const contextAddr = mode === CAPSULE_MODE.ARCHIVE ? guildId
+        : mode === CAPSULE_MODE.PRIVATE_INHERIT ? benefAddr
+        : vaultConfig.vaultObjectId; // DEAD_MAN uses vault_id
 
       // Step 1: Seal encrypt
       setProgress("Encrypting with Seal...");
-      const encryptedData = await sealEncrypt(plaintext, mode, unlockTimeMs, vault?.guild_id ?? account!.address);
+      const encryptedData = await sealEncrypt(plaintext, mode, capsuleId, contextAddr);
 
       // Step 2: Walrus upload (auto-swaps SUI→WAL if needed)
       const { blobId } = await walrusUpload(
@@ -66,8 +80,7 @@ export function CreateCapsule() {
 
       // Step 3: On-chain create_capsule
       setProgress("Submitting transaction...");
-      const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
-      const sealPolicyBytes = Array.from(new TextEncoder().encode(JSON.stringify({ mode, unlockTimeMs, guildId: vault?.guild_id ?? account!.address })));
+      const sealPolicyBytes = Array.from(new TextEncoder().encode(JSON.stringify({ mode, capsuleId, contextAddr })));
 
       const tx = buildCreateCapsuleTx({
         capId: capId,

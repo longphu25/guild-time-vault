@@ -108,16 +108,16 @@ export async function fetchCapsules(): Promise<CapsuleData[]> {
 
 export type UserRole = "leader" | "officer" | "member" | "guest";
 
-export async function detectUserRole(address: string): Promise<{ role: UserRole; capId?: string }> {
+export async function detectUserRole(address: string): Promise<{ role: UserRole; capId?: string; memberCapId?: string; officerCapId?: string }> {
+  let officerCapId: string | undefined;
+  let memberCapId: string | undefined;
+
   const officerRes = await client.listOwnedObjects({ owner: address, type: TYPES.officerCap, limit: 1 });
-  if (officerRes.objects?.length > 0) {
-    return { role: "officer", capId: officerRes.objects[0].objectId };
-  }
+  if (officerRes.objects?.length > 0) officerCapId = officerRes.objects[0].objectId;
 
   const memberRes = await client.listOwnedObjects({ owner: address, type: TYPES.memberCap, limit: 1 });
-  if (memberRes.objects?.length > 0) {
-    return { role: "member", capId: memberRes.objects[0].objectId };
-  }
+  if (memberRes.objects?.length > 0) memberCapId = memberRes.objects[0].objectId;
 
-  return { role: "guest" };
+  const role: UserRole = officerCapId ? "officer" : memberCapId ? "member" : "guest";
+  return { role, capId: officerCapId ?? memberCapId, memberCapId, officerCapId };
 }

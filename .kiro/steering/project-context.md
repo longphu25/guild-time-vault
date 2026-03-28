@@ -525,12 +525,14 @@ TENANT=dev
 ### Deployed Contract IDs (Sui Testnet)
 
 ```
-VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
-VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd   (GuildVault - shared)
-HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
-OFFICER_CAP_ID=0x1e259c6e134da2331de2ba66f8ead29a8e5daddc467e88bd29e5b462db13bd8a
+VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
+VAULT_OBJECT_ID=0x7efbabb12c7d3dd23608a785e71c1ac0d3ee03ac1aedcf69a85ddd028dd41861   (GuildVault - shared)
+HEARTBEAT_OBJECT_ID=0x9b5f350cf3a219040902acac6935c34ce6a509376d49000bd9050e9be6089b2c
+OFFICER_CAP_ID=0x55e460945ce195f9bca53a71fa57a5784a503eb5e17dd06b2cbf91bd26faee3a
 DEPLOYER_ADDRESS=0xdfdd6484f7f94c80daefbfee06728f60236fde6bc229e30453306166a6b5691e
 ```
+
+Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_seal`
 
 ### Deploy guild_time_vault lên testnet
 

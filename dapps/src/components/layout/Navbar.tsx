@@ -1,8 +1,19 @@
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
-import { Clock, Menu, X, Wallet } from "lucide-react";
+import { Clock, Menu, X, Wallet, Copy, Check } from "lucide-react";
 import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
+
+const CopyAddress = ({ address }: { address: string }) => {
+  const [copied, setCopied] = useState(false);
+  const copy = () => { navigator.clipboard.writeText(address); setCopied(true); setTimeout(() => setCopied(false), 1500); };
+  return (
+    <button onClick={copy} className="px-4 py-2 bg-[#1A1A2E]/50 border border-[#00F0FF]/30 rounded-lg text-sm text-[#00F0FF] font-mono flex items-center gap-2 hover:bg-[#00F0FF]/10 transition-all cursor-pointer">
+      {abbreviateAddress(address)}
+      {copied ? <Check className="w-3 h-3" /> : <Copy className="w-3 h-3 opacity-50" />}
+    </button>
+  );
+};
 
 const navLinks = [
   { path: "/", label: "Home" },
@@ -32,7 +43,7 @@ export function Navbar() {
             </span>
           </Link>
 
-          <div className="hidden md:flex items-center gap-6">
+          <div className="hidden md:flex items-center gap-6 absolute left-1/2 -translate-x-1/2">
             {navLinks.map((link) => (
               <Link
                 key={link.path}
@@ -51,9 +62,7 @@ export function Navbar() {
           <div className="hidden md:block">
             {account ? (
               <div className="flex items-center gap-2">
-                <div className="px-4 py-2 bg-[#1A1A2E]/50 border border-[#00F0FF]/30 rounded-lg text-sm text-[#00F0FF] font-mono">
-                  {abbreviateAddress(account.address)}
-                </div>
+                <CopyAddress address={account.address} />
                 <button
                   onClick={handleDisconnect}
                   className="px-4 py-2 bg-transparent border border-[#2D2D3F] rounded-lg text-sm text-[#94A3B8] hover:text-[#E2E8F0] hover:border-[#00F0FF]/30 transition-all"
@@ -99,8 +108,8 @@ export function Navbar() {
             <div className="pt-3 border-t border-[#2D2D3F]">
               {account ? (
                 <>
-                  <div className="px-4 py-2 mb-2 bg-[#1A1A2E]/50 border border-[#00F0FF]/30 rounded-lg text-sm text-[#00F0FF] font-mono text-center">
-                    {abbreviateAddress(account.address)}
+                  <div className="mb-2">
+                    <CopyAddress address={account.address} />
                   </div>
                   <button
                     onClick={() => { handleDisconnect(); setMobileMenuOpen(false); }}

@@ -102,7 +102,7 @@ export async function fetchCapsules(): Promise<CapsuleData[]> {
         }
       } catch { /* skip */ }
     }
-    cursor = res?.nextCursor ?? null;
+    cursor = res?.hasNextPage ? res.nextCursor : null;
   } while (cursor);
 
   return capsules.sort((a, b) => a.unlock_time_ms - b.unlock_time_ms);

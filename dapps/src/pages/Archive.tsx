@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Search, ScrollText, Eye } from "lucide-react";
 import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
 import { useVault } from "@/hooks/use-vault";
@@ -28,6 +28,8 @@ export function Archive() {
   const [q, setQ] = useState("");
   const [revealed, setRevealed] = useState<Record<number, string>>({});
   const [revealing, setRevealing] = useState<number | null>(null);
+
+  useEffect(() => { setRevealed({}); }, [account?.address]);
 
   const claimed = capsules.filter((c) => c.claimed).sort((a, b) => b.unlock_time_ms - a.unlock_time_ms);
   const filtered = claimed.filter((c) => {

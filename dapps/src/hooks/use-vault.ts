@@ -1,5 +1,5 @@
-import { useCallback } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useCallback, useEffect } from "react";
+import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import {
   fetchVault,
@@ -26,6 +26,12 @@ export interface VaultState {
 
 export function useVault(): VaultState {
   const account = useCurrentAccount();
+  const queryClient = useQueryClient();
+
+  // Clear all cache when account changes
+  useEffect(() => {
+    queryClient.invalidateQueries();
+  }, [account?.address, queryClient]);
 
   const vaultQuery = useQuery({
     queryKey: ["vault"],

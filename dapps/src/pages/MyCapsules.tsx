@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { PackagePlus, Lock, Unlock, Circle } from "lucide-react";
 import { Link } from "react-router";
 import * as Tabs from "@radix-ui/react-tabs";
@@ -89,6 +89,9 @@ export function MyCapsules() {
 
   const [revealedMessages, setRevealedMessages] = useState<Record<number, string>>({});
   const [revealingId, setRevealingId] = useState<number | null>(null);
+
+  // Clear revealed messages when account changes
+  useEffect(() => { setRevealedMessages({}); }, [account?.address]);
 
   const handleClaim = async (capsuleId: number, mode: number) => {
     try {

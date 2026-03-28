@@ -1,13 +1,14 @@
 import { useState } from "react";
-import { Heart, UserPlus, Shield, Users } from "lucide-react";
+import { Heart, UserPlus, Shield, Users, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
 import { useDAppKit } from "@mysten/dapp-kit-react";
 import { WalletGate } from "@/components/capsule/WalletGate";
 import { useVault } from "@/hooks/use-vault";
-import { buildHeartbeatTx, buildGrantMemberTx, buildGrantOfficerTx } from "@/lib/vault-tx";
+import { buildHeartbeatTx, buildGrantMemberTx, buildGrantOfficerTx, buildTriggerDeadManTx } from "@/lib/vault-tx";
+import { CAPSULE_MODE } from "@/lib/contract";
 
 export function Admin() {
-  const { role, capId, heartbeat, members, refetch } = useVault();
+  const { role, capId, heartbeat, members, capsules, refetch } = useVault();
   const { signAndExecuteTransaction } = useDAppKit();
   const [memberAddr, setMemberAddr] = useState("");
   const [grantType, setGrantType] = useState<"member" | "officer">("member");
@@ -15,6 +16,23 @@ export function Admin() {
 
   const now = Date.now();
   const isOfficer = role === "officer" || role === "leader";
+  const heartbeatExpired = heartbeat ? now - heartbeat.last_ping_ms > heartbeat.timeout_ms : false;
+  const deadManCapsules = capsules.filter((c) => c.mode === CAPSULE_MODE.DEAD_MAN);
+
+  const handleTriggerDeadMan = async (capsuleId: number) => {
+    if (!capId) return toast.error("No officer capability found");
+    setBusy(true);
+    try {
+      const tx = buildTriggerDeadManTx(capId, capsuleId);
+      await signAndExecuteTransaction({ transaction: tx });
+      toast.success("Dead man triggered! Capsule is now claimable.");
+      refetch();
+    } catch (err: any) {
+      toast.error(err.message ?? "Trigger failed");
+    } finally {
+      setBusy(false);
+    }
+  };
 
   const handleHeartbeat = async () => {
     setBusy(true);
@@ -83,6 +101,34 @@ export function Admin() {
                   <Heart className="w-4 h-4" /> Ping Now
                 </button>
               </div>
+
+              {/* Dead Man Capsules */}
+              {deadManCapsules.length > 0 && (
+                <div className="bg-[#1A1A2E]/80 border border-[#2D2D3F] rounded-lg p-6">
+                  <h2 className="text-xl font-heading text-[#E2E8F0] mb-4 flex items-center gap-2">
+                    <AlertTriangle className="w-5 h-5 text-[#F59E0B]" /> Dead Man Capsules ({deadManCapsules.length})
+                  </h2>
+                  <div className="space-y-3">
+                    {deadManCapsules.map((c) => (
+                      <div key={c.capsule_id} className="flex items-center justify-between px-4 py-3 bg-[#0A0A0F]/50 rounded-lg">
+                        <div>
+                          <span className="text-[#E2E8F0] text-sm">Capsule #{c.capsule_id}</span>
+                          <span className={`ml-3 text-xs px-2 py-0.5 rounded ${c.claimed ? "bg-[#6B7280]/20 text-[#6B7280]" : "bg-[#F59E0B]/20 text-[#F59E0B]"}`}>
+                            {c.claimed ? "Claimed" : heartbeatExpired ? "Triggerable" : "Locked"}
+                          </span>
+                        </div>
+                        {!c.claimed && heartbeatExpired && (
+                          <button onClick={() => handleTriggerDeadMan(c.capsule_id)} disabled={busy}
+                            className="px-4 py-2 bg-[#F59E0B] text-[#0A0A0F] rounded text-sm hover:drop-shadow-[0_0_12px_rgba(245,158,11,0.6)] transition-all disabled:opacity-50">
+                            Trigger
+                          </button>
+                        )}
+                      </div>
+                    ))}
+                  </div>
+                  {!heartbeatExpired && <p className="text-xs text-[#94A3B8] mt-3">Heartbeat is active — trigger available only when expired.</p>}
+                </div>
+              )}
 
               {/* Grant Role */}
               <div className="bg-[#1A1A2E]/80 border border-[#2D2D3F] rounded-lg p-6">

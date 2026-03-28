@@ -1,17 +1,13 @@
+import { SuiGrpcClient } from "@mysten/sui/grpc";
 import { vaultConfig } from "./vault-config";
 import { TYPES } from "./contract";
 
-const RPC = "https://fullnode.testnet.sui.io:443";
+const client = new SuiGrpcClient({
+  network: "testnet",
+  baseUrl: "https://fullnode.testnet.sui.io:443",
+});
 
-async function rpc(method: string, params: unknown[]) {
-  const res = await fetch(RPC, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({ jsonrpc: "2.0", id: 1, method, params }),
-  });
-  const json = await res.json();
-  return json.result;
-}
+export { client };
 
 // ── Types ──
 
@@ -42,89 +38,85 @@ export interface HeartbeatData {
   timeout_ms: number;
 }
 
+// ── Helpers ──
+
+/** Decode base64 string to byte array (for walrus_blob_id / seal_policy_id) */
+function b64ToBytes(b64: string): number[] {
+  try {
+    return Array.from(atob(b64), (c) => c.charCodeAt(0));
+  } catch {
+    return [];
+  }
+}
+
 // ── Read functions ──
 
 export async function fetchVault(): Promise<VaultData | null> {
-  const res = await rpc("sui_getObject", [vaultConfig.vaultObjectId, { showContent: true }]);
-  const fields = res?.data?.content?.fields;
-  if (!fields) return null;
+  const res = await client.getObject({ objectId: vaultConfig.vaultObjectId, include: { json: true } });
+  const json = res.object?.json as Record<string, any> | undefined;
+  if (!json) return null;
   return {
     id: vaultConfig.vaultObjectId,
-    guild_id: fields.guild_id,
-    next_capsule_id: Number(fields.next_capsule_id),
-    capsules_table_id: fields.capsules?.fields?.id?.id ?? "",
+    guild_id: json.guild_id,
+    next_capsule_id: Number(json.next_capsule_id),
+    capsules_table_id: json.capsules?.id ?? "",
   };
 }
 
 export async function fetchHeartbeat(): Promise<HeartbeatData | null> {
-  const res = await rpc("sui_getObject", [vaultConfig.heartbeatObjectId, { showContent: true }]);
-  const fields = res?.data?.content?.fields;
-  if (!fields) return null;
+  const res = await client.getObject({ objectId: vaultConfig.heartbeatObjectId, include: { json: true } });
+  const json = res.object?.json as Record<string, any> | undefined;
+  if (!json) return null;
   return {
     id: vaultConfig.heartbeatObjectId,
-    vault_id: fields.vault_id,
-    last_ping_ms: Number(fields.last_ping_ms),
-    timeout_ms: Number(fields.timeout_ms),
+    vault_id: json.vault_id,
+    last_ping_ms: Number(json.last_ping_ms),
+    timeout_ms: Number(json.timeout_ms),
   };
 }
 
 export async function fetchCapsules(): Promise<CapsuleData[]> {
-  // First get the table ID from vault
   const vault = await fetchVault();
   if (!vault?.capsules_table_id) return [];
 
-  // Dynamic fields are on the Table object, not the vault
-  let cursor: string | null = null;
+  const dyn = await client.listDynamicFields({ parentId: vault.capsules_table_id });
   const capsules: CapsuleData[] = [];
 
-  do {
-    const res = await rpc("suix_getDynamicFields", [vault.capsules_table_id, cursor, 50]);
-    for (const field of res?.data ?? []) {
-      try {
-        const obj = await rpc("suix_getDynamicFieldObject", [
-          vault.capsules_table_id,
-          { type: field.name.type, value: field.name.value },
-        ]);
-        const f = obj?.data?.content?.fields?.value?.fields ?? obj?.data?.content?.fields;
-        if (f && f.mode !== undefined) {
-          capsules.push({
-            id: field.objectId,
-            capsule_id: Number(field.name.value),
-            guild_id: f.guild_id ?? vault.guild_id,
-            creator: f.creator,
-            mode: Number(f.mode),
-            unlock_time_ms: Number(f.unlock_time_ms),
-            beneficiary: f.beneficiary,
-            walrus_blob_id: f.walrus_blob_id ?? [],
-            seal_policy_id: f.seal_policy_id ?? [],
-            claimed: f.claimed === true || f.claimed === "true",
-          });
-        }
-      } catch { /* skip */ }
-    }
-    cursor = res?.hasNextPage ? res.nextCursor : null;
-  } while (cursor);
-
+  for (const field of dyn.dynamicFields ?? []) {
+    try {
+      const obj = await client.getObject({ objectId: field.fieldId, include: { json: true } });
+      const json = obj.object?.json as Record<string, any> | undefined;
+      const f = json?.value ?? json;
+      if (f && f.mode !== undefined) {
+        capsules.push({
+          id: field.fieldId,
+          capsule_id: Number(json?.name ?? 0),
+          guild_id: f.guild_id ?? vault.guild_id,
+          creator: f.creator,
+          mode: Number(f.mode),
+          unlock_time_ms: Number(f.unlock_time_ms),
+          beneficiary: f.beneficiary,
+          walrus_blob_id: typeof f.walrus_blob_id === "string" ? b64ToBytes(f.walrus_blob_id) : (f.walrus_blob_id ?? []),
+          seal_policy_id: typeof f.seal_policy_id === "string" ? b64ToBytes(f.seal_policy_id) : (f.seal_policy_id ?? []),
+          claimed: f.claimed === true || f.claimed === "true",
+        });
+      }
+    } catch { /* skip */ }
+  }
   return capsules.sort((a, b) => a.unlock_time_ms - b.unlock_time_ms);
 }
 
 export type UserRole = "leader" | "officer" | "member" | "guest";
 
 export async function detectUserRole(address: string): Promise<{ role: UserRole; capId?: string }> {
-  // Check officer cap
-  const officerRes = await rpc("suix_getOwnedObjects", [
-    address, { filter: { StructType: TYPES.officerCap } }, null, 1,
-  ]);
-  if (officerRes?.data?.length > 0) {
-    return { role: "officer", capId: officerRes.data[0].data?.objectId };
+  const officerRes = await client.listOwnedObjects({ owner: address, type: TYPES.officerCap, limit: 1 });
+  if (officerRes.objects?.length > 0) {
+    return { role: "officer", capId: officerRes.objects[0].objectId };
   }
 
-  // Check member cap
-  const memberRes = await rpc("suix_getOwnedObjects", [
-    address, { filter: { StructType: TYPES.memberCap } }, null, 1,
-  ]);
-  if (memberRes?.data?.length > 0) {
-    return { role: "member", capId: memberRes.data[0].data?.objectId };
+  const memberRes = await client.listOwnedObjects({ owner: address, type: TYPES.memberCap, limit: 1 });
+  if (memberRes.objects?.length > 0) {
+    return { role: "member", capId: memberRes.objects[0].objectId };
   }
 
   return { role: "guest" };

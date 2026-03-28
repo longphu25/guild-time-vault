@@ -6,6 +6,7 @@ import { Timeline } from "@/pages/Timeline";
 import { MyCapsules } from "@/pages/MyCapsules";
 import { Archive } from "@/pages/Archive";
 import { Admin } from "@/pages/Admin";
+import { InitVault } from "@/pages/InitVault";
 import { NotFound } from "@/pages/NotFound";
 
 export const router = createBrowserRouter([
@@ -19,6 +20,7 @@ export const router = createBrowserRouter([
       { path: "my-capsules", element: <MyCapsules /> },
       { path: "archive", element: <Archive /> },
       { path: "admin", element: <Admin /> },
+      { path: "init-vault", element: <InitVault /> },
       { path: "*", element: <NotFound /> },
     ],
   },

@@ -5,12 +5,13 @@ import { TX } from "./contract";
 const SUI_CLOCK = "0x6";
 
 /**
- * create_capsule(vault: &mut GuildVault, cap: &GuildMemberCap, mode: u8,
- *   unlock_time_ms: u64, beneficiary: address, walrus_blob_id: vector<u8>,
- *   seal_policy_id: vector<u8>, clock: &Clock, ctx: &mut TxContext)
+ * create_capsule — requires MemberCap
+ * create_capsule_as_officer — requires OfficerCap
+ * Automatically picks the right function based on role.
  */
 export function buildCreateCapsuleTx(args: {
-  memberCapId: string;
+  capId: string;
+  role: "member" | "officer";
   mode: number;
   unlockTimeMs: number;
   beneficiary: string;
@@ -19,10 +20,10 @@ export function buildCreateCapsuleTx(args: {
 }) {
   const tx = new Transaction();
   tx.moveCall({
-    target: TX.createCapsule,
+    target: args.role === "officer" ? TX.createCapsuleAsOfficer : TX.createCapsule,
     arguments: [
       tx.object(vaultConfig.vaultObjectId),
-      tx.object(args.memberCapId),
+      tx.object(args.capId),
       tx.pure.u8(args.mode),
       tx.pure.u64(args.unlockTimeMs),
       tx.pure.address(args.beneficiary),

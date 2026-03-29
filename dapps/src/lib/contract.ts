@@ -7,6 +7,7 @@ const MOD = {
   heartbeatApi: "vault_heartbeat_api",
   views: "vault_views",
   seal: "vault_seal",
+  registry: "vault_registry",
 } as const;
 
 const target = (module: string, fn: string) =>

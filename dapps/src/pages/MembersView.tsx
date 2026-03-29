@@ -6,7 +6,7 @@ import { buildGrantMemberTx, buildGrantOfficerTx } from "@/lib/vault-tx";
 import { toast } from "sonner";
 
 export function MembersView() {
-  const { role, capId, members, refetch } = useVault();
+  const { role, capId, vaultId, members, refetch } = useVault();
   const { signAndExecuteTransaction } = useDAppKit();
   const [addr, setAddr] = useState("");
   const [grantRole, setGrantRole] = useState<"member" | "officer">("member");
@@ -17,7 +17,7 @@ export function MembersView() {
     if (!addr.startsWith("0x") || !capId) return toast.error("Invalid address or no officer cap");
     setBusy(true);
     try {
-      const tx = grantRole === "officer" ? buildGrantOfficerTx(capId, addr) : buildGrantMemberTx(capId, addr);
+      const tx = grantRole === "officer" ? buildGrantOfficerTx(capId, vaultId!, addr) : buildGrantMemberTx(capId, vaultId!, addr);
       await signAndExecuteTransaction({ transaction: tx });
       toast.success(`${grantRole === "officer" ? "Officer" : "Member"} cap granted!`);
       setAddr("");

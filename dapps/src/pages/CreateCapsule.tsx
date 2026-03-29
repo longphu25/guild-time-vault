@@ -21,7 +21,7 @@ export function CreateCapsule() {
   const dAppKit = useDAppKit();
   const { signAndExecuteTransaction } = dAppKit;
   const account = useCurrentAccount();
-  const { role, capId, vault, refetch } = useVault();
+  const { role, capId, vault, vaultId, refetch } = useVault();
 
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
@@ -57,10 +57,9 @@ export function CreateCapsule() {
       const guildId = vault?.guild_id ?? account!.address;
 
       // Context address depends on mode
-      const { vaultConfig } = await import("@/lib/vault-config");
       const contextAddr = mode === CAPSULE_MODE.ARCHIVE ? guildId
         : mode === CAPSULE_MODE.PRIVATE_INHERIT ? benefAddr
-        : vaultConfig.vaultObjectId; // DEAD_MAN uses vault_id
+        : vaultId ?? ""; // DEAD_MAN uses vault_id
 
       // Step 1: Seal encrypt
       setProgress("Encrypting with Seal...");
@@ -83,6 +82,7 @@ export function CreateCapsule() {
       const sealPolicyBytes = Array.from(new TextEncoder().encode(JSON.stringify({ mode, capsuleId, contextAddr })));
 
       const tx = buildCreateCapsuleTx({
+        vaultId: vaultId!,
         capId: capId,
         role: role === "officer" ? "officer" : "member",
         mode,

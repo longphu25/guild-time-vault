@@ -100,7 +100,7 @@ function CapsuleCard({ capsule, onClaim, onReveal, revealed, revealing, userAddr
 }
 
 export function VaultView() {
-  const { capsules, loading, memberCapId, capId } = useVault();
+  const { capsules, loading, memberCapId, capId, vaultId, heartbeatId } = useVault();
   const account = useCurrentAccount();
   const { signAndExecuteTransaction, signPersonalMessage } = useDAppKit();
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
@@ -125,7 +125,7 @@ export function VaultView() {
 
   const handleClaim = async (capsuleId: number, mode: number) => {
     try {
-      const tx = mode === CAPSULE_MODE.PRIVATE_INHERIT ? buildClaimPrivateInheritTx(capsuleId) : buildClaimArchiveTx(capId!, capsuleId);
+      const tx = mode === CAPSULE_MODE.PRIVATE_INHERIT ? buildClaimPrivateInheritTx(vaultId!, capsuleId) : buildClaimArchiveTx(vaultId!, capId!, capsuleId);
       const result = await signAndExecuteTransaction({ transaction: tx });
       toast.success("Capsule claimed!");
       const digest = (result as any)?.Transaction?.digest ?? (result as any)?.digest;
@@ -145,7 +145,7 @@ export function VaultView() {
       const policy = parseSealPolicy(capsule);
       if (policy.capsuleId == null) throw new Error("Old format capsule — cannot decrypt");
       const encrypted = await walrusDownload(blobId);
-      const decrypted = await sealDecrypt(encrypted, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: memberCapId ?? capId });
+      const decrypted = await sealDecrypt(encrypted, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: memberCapId ?? capId, vaultId, heartbeatId });
       setRevealed((p) => ({ ...p, [capsuleId]: new TextDecoder().decode(decrypted) }));
     } catch (err: any) {
       const msg = err.message ?? "";

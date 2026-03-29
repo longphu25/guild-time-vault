@@ -8,7 +8,7 @@ import { CAPSULE_MODE } from "@/lib/contract";
 import { toast } from "sonner";
 
 export function HeartbeatView() {
-  const { role, capId, heartbeat, capsules, refetch } = useVault();
+  const { role, capId, heartbeat, heartbeatId, vaultId, capsules, refetch } = useVault();
   const { signAndExecuteTransaction } = useDAppKit();
   const [busy, setBusy] = useState(false);
 
@@ -22,7 +22,7 @@ export function HeartbeatView() {
   const handlePing = async () => {
     setBusy(true);
     try {
-      await signAndExecuteTransaction({ transaction: buildHeartbeatTx() });
+      await signAndExecuteTransaction({ transaction: buildHeartbeatTx(heartbeatId!) });
       toast.success("Heartbeat sent!");
       refetch();
     } catch (err: any) {
@@ -36,7 +36,7 @@ export function HeartbeatView() {
     if (!capId) return toast.error("No officer cap");
     setBusy(true);
     try {
-      await signAndExecuteTransaction({ transaction: buildTriggerDeadManTx(capId, capsuleId) });
+      await signAndExecuteTransaction({ transaction: buildTriggerDeadManTx(vaultId!, heartbeatId!, capId!, capsuleId) });
       toast.success("Dead man triggered!");
       refetch();
     } catch (err: any) {

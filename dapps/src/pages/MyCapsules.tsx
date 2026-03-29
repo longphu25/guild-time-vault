@@ -97,7 +97,7 @@ function CapsuleItem({ c, onClaim, onReveal, revealedMessage, revealing, userAdd
 export function MyCapsules() {
   const [tab, setTab] = useState("all");
   const account = useCurrentAccount();
-  const { capsules, role, capId, memberCapId, loading, refetch } = useVault();
+  const { capsules, role, capId, memberCapId, vaultId, heartbeatId, loading, refetch } = useVault();
   const { signAndExecuteTransaction, signPersonalMessage } = useDAppKit();
 
   const addr = account?.address ?? "";
@@ -117,9 +117,9 @@ export function MyCapsules() {
       // Step 1: Claim on-chain
       let tx;
       if (mode === CAPSULE_MODE.PRIVATE_INHERIT) {
-        tx = buildClaimPrivateInheritTx(capsuleId);
+        tx = buildClaimPrivateInheritTx(vaultId!, capsuleId);
       } else if (capId) {
-        tx = buildClaimArchiveTx(capId, capsuleId);
+        tx = buildClaimArchiveTx(vaultId!, capId, capsuleId);
       } else {
         return toast.error("No member capability found");
       }
@@ -154,7 +154,7 @@ export function MyCapsules() {
         throw new Error("Capsule encrypted with old format — cannot decrypt");
       }
       const encryptedData = await walrusDownload(blobId);
-      const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: decryptCapId });
+      const decrypted = await sealDecrypt(encryptedData, policy.mode, policy.capsuleId, policy.contextAddr, account.address, signPersonalMessage, { memberCapId: decryptCapId, vaultId, heartbeatId });
       setRevealedMessages((prev) => ({ ...prev, [capsuleId]: new TextDecoder().decode(decrypted) }));
     } catch (err: any) {
       const msg = err.message ?? "Failed to decrypt";

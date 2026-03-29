@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { Search, BookOpen, Lock, CheckCircle2, Clock, Eye } from "lucide-react";
+import { Search, BookOpen, Lock, CheckCircle2, Clock } from "lucide-react";
 import { useVault } from "@/hooks/use-vault";
 import { useCurrentAccount, useDAppKit } from "@mysten/dapp-kit-react";
 import { CAPSULE_MODE } from "@/lib/contract";
@@ -25,26 +25,23 @@ function parseSealPolicy(c: CapsuleData) {
 
 const modeLabel = (m: number) => m === 0 ? "ARCHIVE" : m === 1 ? "PRIVATE INHERIT" : "DEAD MAN";
 
-function CapsuleCard({ capsule, onClaim, onReveal, revealed, revealing, userAddr, hasMemberCap }: {
-  capsule: CapsuleData; onClaim: (id: number, mode: number) => void; onReveal: (id: number) => void;
-  revealed?: string; revealing?: boolean; userAddr?: string; hasMemberCap?: boolean;
+function CapsuleCard({ capsule, onSelect, hasMemberCap }: {
+  capsule: CapsuleData; onSelect?: (id: number) => void; hasMemberCap?: boolean;
 }) {
   const now = Date.now();
   const unlockable = !capsule.claimed && now >= capsule.unlock_time_ms;
   const daysLeft = Math.max(0, Math.ceil((capsule.unlock_time_ms - now) / 864e5));
   const zeroBenef = "0x0000000000000000000000000000000000000000000000000000000000000000";
-  const isBeneficiary = capsule.beneficiary && capsule.beneficiary !== zeroBenef && capsule.beneficiary === userAddr;
 
   const status = capsule.claimed ? "CLAIMED" : unlockable ? "UNLOCKABLE" : "LOCKED";
   const canClaim = unlockable && (capsule.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap : capsule.mode === CAPSULE_MODE.PRIVATE_INHERIT ? true : false);
-  const canReveal = capsule.claimed && (capsule.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap : capsule.mode === CAPSULE_MODE.PRIVATE_INHERIT ? isBeneficiary : true);
 
   const statusColor = status === "UNLOCKABLE" ? "text-tertiary border-tertiary/30" : status === "LOCKED" ? "text-secondary border-secondary/30" : "text-on-surface-variant border-on-surface-variant/20";
   const StatusIcon = status === "UNLOCKABLE" ? BookOpen : status === "CLAIMED" ? CheckCircle2 : Lock;
   const modeColor = capsule.mode === 1 ? "text-secondary" : capsule.mode === 2 ? "text-error" : "text-primary";
 
   return (
-    <div className={`glass-panel corner-bracket p-6 flex flex-col h-full border border-primary/10 group hover:border-primary/40 transition-all duration-500 ${status === "CLAIMED" ? "opacity-70 hover:opacity-100" : ""}`}>
+    <div onClick={() => onSelect?.(capsule.capsule_id)} className={`glass-panel corner-bracket p-6 flex flex-col h-full border border-primary/10 group hover:border-primary/40 transition-all duration-500 cursor-pointer ${status === "CLAIMED" ? "opacity-70 hover:opacity-100" : ""}`}>
       <div className="flex justify-between items-start mb-6">
         <span className={`font-headline text-[10px] tracking-widest px-2 py-0.5 border uppercase font-bold ${statusColor}`}>{status}</span>
         <StatusIcon size={20} className={status === "UNLOCKABLE" ? "text-primary" : status === "CLAIMED" ? "text-on-surface-variant" : "text-secondary"} />
@@ -71,36 +68,23 @@ function CapsuleCard({ capsule, onClaim, onReveal, revealed, revealing, userAddr
             <span className="text-xs uppercase tracking-tighter">Unlocks in <span className="text-on-surface font-bold">{daysLeft}d</span></span>
           </div>
         )}
-        {revealed && (
-          <div className="bg-background p-3 border-l-2 border-tertiary/50">
-            <div className="text-[9px] font-headline text-tertiary uppercase font-bold mb-1">Decrypted Message</div>
-            <p className="text-sm text-on-surface italic">"{revealed}"</p>
-          </div>
-        )}
       </div>
 
       {canClaim ? (
-        <button onClick={() => onClaim(capsule.capsule_id, capsule.mode)} className="w-full bg-primary py-3 flex items-center justify-center gap-2 relative overflow-hidden active:scale-95 transition-all">
-          <div className="absolute inset-0 bg-white/20 translate-x-[-100%] hover:translate-x-[100%] transition-transform duration-500" />
-          <span className="font-headline font-black text-background tracking-widest text-sm uppercase">Open Capsule</span>
-        </button>
-      ) : canReveal && !revealed ? (
-        <button onClick={() => onReveal(capsule.capsule_id)} disabled={revealing} className="w-full border border-primary/20 py-3 flex items-center justify-center gap-2 text-primary font-headline font-black tracking-widest text-sm uppercase hover:bg-primary/10 transition-colors disabled:opacity-50">
-          {revealing ? "Decrypting..." : <><Eye size={16} /> Reveal</>}
-        </button>
-      ) : status === "CLAIMED" && revealed ? (
-        <div className="w-full border border-tertiary/20 py-3 text-center text-tertiary font-headline font-black tracking-widest text-sm uppercase">Revealed</div>
+        <div className="w-full bg-tertiary/10 border border-tertiary/30 py-3 text-center text-tertiary font-headline font-black tracking-widest text-sm uppercase">Ready to Open</div>
+      ) : status === "CLAIMED" ? (
+        <div className="w-full border border-on-surface-variant/20 py-3 text-center text-on-surface-variant font-headline font-black tracking-widest text-sm uppercase">Claimed</div>
       ) : (
-        <button className="w-full border border-on-surface-variant/20 py-3 text-on-surface-variant font-headline font-black tracking-widest text-sm uppercase cursor-not-allowed opacity-50" disabled>
+        <div className="w-full border border-on-surface-variant/20 py-3 text-center text-on-surface-variant font-headline font-black tracking-widest text-sm uppercase opacity-50">
           {status === "LOCKED" ? "Encrypted" : "No Access"}
-        </button>
+        </div>
       )}
     </div>
   );
 }
 
 export function VaultView() {
-  const { capsules, loading, memberCapId, capId, vaultId, heartbeatId } = useVault();
+  const { capsules, loading, memberCapId, capId, vaultId, heartbeatId, refetch } = useVault();
   const account = useCurrentAccount();
   const { signAndExecuteTransaction, signPersonalMessage } = useDAppKit();
   const [modeFilter, setModeFilter] = useState<ModeFilter>("all");
@@ -108,6 +92,8 @@ export function VaultView() {
   const [search, setSearch] = useState("");
   const [revealed, setRevealed] = useState<Record<number, string>>({});
   const [revealingId, setRevealingId] = useState<number | null>(null);
+  const [selectedId, setSelectedId] = useState<number | null>(null);
+  const selected = selectedId !== null ? capsules.find((c) => c.capsule_id === selectedId) ?? null : null;
 
   const now = Date.now();
   const filtered = capsules
@@ -130,6 +116,7 @@ export function VaultView() {
       toast.success("Capsule claimed!");
       const digest = (result as any)?.Transaction?.digest ?? (result as any)?.digest;
       if (digest) await client.waitForTransaction({ digest });
+      refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Claim failed");
     }
@@ -205,10 +192,70 @@ export function VaultView() {
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {filtered.map((c) => (
-            <CapsuleCard key={c.capsule_id} capsule={c} onClaim={handleClaim} onReveal={handleReveal}
-              revealed={revealed[c.capsule_id]} revealing={revealingId === c.capsule_id}
-              userAddr={account?.address} hasMemberCap={!!memberCapId} />
+            <CapsuleCard key={c.capsule_id} capsule={c} onSelect={setSelectedId}
+              hasMemberCap={!!memberCapId} />
           ))}
+        </div>
+      )}
+
+      {/* Detail Modal */}
+      {selected && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-background/80 backdrop-blur-sm" onClick={() => setSelectedId(null)}>
+          <div className="glass-panel border border-primary/20 w-full max-w-2xl max-h-[80vh] overflow-y-auto p-8 relative" onClick={(e) => e.stopPropagation()}>
+            <button onClick={() => setSelectedId(null)} className="absolute top-4 right-4 text-on-surface-variant hover:text-primary font-headline text-xs">✕</button>
+
+            <div className={`font-headline text-[9px] uppercase tracking-widest mb-1 ${selected.mode === 1 ? "text-secondary" : selected.mode === 2 ? "text-error" : "text-primary"}`}>
+              {modeLabel(selected.mode)}
+            </div>
+            <h2 className="font-headline text-2xl font-black text-on-surface mb-6">Capsule #{selected.capsule_id}</h2>
+
+            <div className="space-y-4 mb-8">
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Creator</span><span className="font-mono text-on-surface">{selected.creator.slice(0, 12)}...{selected.creator.slice(-6)}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Unlock Time</span><span className="text-on-surface">{new Date(selected.unlock_time_ms).toLocaleString()}</span></div>
+              <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Status</span>
+                <span className={selected.claimed ? "text-on-surface-variant" : Date.now() >= selected.unlock_time_ms ? "text-tertiary" : "text-secondary"}>
+                  {selected.claimed ? "CLAIMED" : Date.now() >= selected.unlock_time_ms ? "UNLOCKABLE" : "LOCKED"}
+                </span>
+              </div>
+              {selected.beneficiary && selected.beneficiary !== "0x0000000000000000000000000000000000000000000000000000000000000000" && (
+                <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Beneficiary</span><span className="font-mono text-on-surface">{selected.beneficiary.slice(0, 12)}...{selected.beneficiary.slice(-6)}</span></div>
+              )}
+            </div>
+
+            {revealed[selected.capsule_id] && (
+              <div className="bg-background p-4 border-l-2 border-tertiary/50 mb-6">
+                <div className="text-[9px] font-headline text-tertiary uppercase font-bold mb-2">Decrypted Message</div>
+                <p className="text-sm text-on-surface italic whitespace-pre-wrap">"{revealed[selected.capsule_id]}"</p>
+              </div>
+            )}
+
+            <div className="flex gap-3">
+              {!selected.claimed && Date.now() >= selected.unlock_time_ms && (
+                selected.mode === CAPSULE_MODE.ARCHIVE && !memberCapId ? (
+                  <div className="flex-1 border border-on-surface-variant/20 py-3 text-center text-on-surface-variant font-headline text-xs uppercase tracking-widest opacity-50">No Access — MemberCap Required</div>
+                ) : (
+                  <button onClick={() => handleClaim(selected.capsule_id, selected.mode)}
+                    className="flex-1 bg-primary py-3 text-background font-headline font-black text-sm tracking-[0.2em] uppercase active:scale-95 transition-all">
+                    Open Capsule
+                  </button>
+                )
+              )}
+              {selected.claimed && !revealed[selected.capsule_id] && (
+                (selected.mode === CAPSULE_MODE.ARCHIVE && !memberCapId) ? (
+                  <div className="flex-1 border border-on-surface-variant/20 py-3 text-center text-on-surface-variant font-headline text-xs uppercase tracking-widest opacity-50">No Access — MemberCap Required</div>
+                ) : (
+                  <button onClick={() => handleReveal(selected.capsule_id)} disabled={revealingId === selected.capsule_id}
+                    className="flex-1 border border-primary/30 py-3 text-primary font-headline font-black text-sm tracking-[0.2em] uppercase hover:bg-primary/10 transition-all disabled:opacity-50">
+                    {revealingId === selected.capsule_id ? "Decrypting..." : "Reveal Message"}
+                  </button>
+                )
+              )}
+              <button onClick={() => setSelectedId(null)}
+                className="px-6 py-3 border border-on-surface-variant/20 text-on-surface-variant font-headline text-sm tracking-widest uppercase hover:text-on-surface transition-colors">
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>

@@ -1,3 +1,6 @@
 [submodule "world-contracts"]
 	path = world-contracts
 	url = https://github.com/evefrontier/world-contracts.git
+[submodule "evevault"]
+	path = evevault
+	url = git@github.com:longphu25/evevault.git

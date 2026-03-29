@@ -36,7 +36,7 @@ function CapsuleCard({ capsule, onSelect, hasMemberCap }: {
   const status = capsule.claimed ? "CLAIMED" : unlockable ? "UNLOCKABLE" : "LOCKED";
   const canClaim = unlockable && (capsule.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap : capsule.mode === CAPSULE_MODE.PRIVATE_INHERIT ? true : false);
 
-  const statusColor = status === "UNLOCKABLE" ? "text-tertiary border-tertiary/30" : status === "LOCKED" ? "text-secondary border-secondary/30" : "text-on-surface-variant border-on-surface-variant/20";
+  const statusColor = status === "UNLOCKABLE" ? "text-secondary border-secondary/30" : status === "LOCKED" ? "text-secondary border-secondary/30" : "text-on-surface-variant border-on-surface-variant/20";
   const StatusIcon = status === "UNLOCKABLE" ? BookOpen : status === "CLAIMED" ? CheckCircle2 : Lock;
   const modeColor = capsule.mode === 1 ? "text-secondary" : capsule.mode === 2 ? "text-error" : "text-primary";
 
@@ -71,7 +71,7 @@ function CapsuleCard({ capsule, onSelect, hasMemberCap }: {
       </div>
 
       {canClaim ? (
-        <div className="w-full bg-tertiary/10 border border-tertiary/30 py-3 text-center text-tertiary font-headline font-black tracking-widest text-sm uppercase">Ready to Open</div>
+        <div className="w-full bg-secondary/10 border border-secondary/30 py-3 text-center text-secondary font-headline font-black tracking-widest text-sm uppercase">Ready to Open</div>
       ) : status === "CLAIMED" ? (
         <div className="w-full border border-on-surface-variant/20 py-3 text-center text-on-surface-variant font-headline font-black tracking-widest text-sm uppercase">Claimed</div>
       ) : (
@@ -213,7 +213,7 @@ export function VaultView() {
               <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Creator</span><span className="font-mono text-on-surface">{selected.creator.slice(0, 12)}...{selected.creator.slice(-6)}</span></div>
               <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Unlock Time</span><span className="text-on-surface">{new Date(selected.unlock_time_ms).toLocaleString()}</span></div>
               <div className="flex justify-between text-sm"><span className="text-on-surface-variant">Status</span>
-                <span className={selected.claimed ? "text-on-surface-variant" : Date.now() >= selected.unlock_time_ms ? "text-tertiary" : "text-secondary"}>
+                <span className={selected.claimed ? "text-on-surface-variant" : Date.now() >= selected.unlock_time_ms ? "text-secondary" : "text-secondary"}>
                   {selected.claimed ? "CLAIMED" : Date.now() >= selected.unlock_time_ms ? "UNLOCKABLE" : "LOCKED"}
                 </span>
               </div>
@@ -223,8 +223,8 @@ export function VaultView() {
             </div>
 
             {revealed[selected.capsule_id] && (
-              <div className="bg-background p-4 border-l-2 border-tertiary/50 mb-6">
-                <div className="text-[9px] font-headline text-tertiary uppercase font-bold mb-2">Decrypted Message</div>
+              <div className="bg-background p-4 border-l-2 border-secondary/50 mb-6">
+                <div className="text-[9px] font-headline text-secondary uppercase font-bold mb-2">Decrypted Message</div>
                 <p className="text-sm text-on-surface italic whitespace-pre-wrap">"{revealed[selected.capsule_id]}"</p>
               </div>
             )}

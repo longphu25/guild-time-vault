@@ -55,7 +55,7 @@ export function TopBar() {
               <span className="font-headline text-[10px] tracking-widest text-secondary uppercase opacity-70">{role.toUpperCase()}</span>
               <span className="font-mono text-xs text-on-surface-variant flex items-center gap-1">
                 {abbreviateAddress(account.address)}
-                {copied ? <Check size={10} className="text-tertiary" /> : <Copy size={10} className="opacity-40" />}
+                {copied ? <Check size={10} className="text-secondary" /> : <Copy size={10} className="opacity-40" />}
               </span>
             </button>
             <button onClick={handleDisconnect} className="p-2 hover:bg-primary/10 transition-all text-primary">

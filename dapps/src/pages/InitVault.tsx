@@ -66,7 +66,7 @@ export function InitializeView() {
             <div className="relative">
               <input type="text" value={account?.address ?? ""} readOnly
                 className="w-full bg-transparent border-0 border-b border-on-surface-variant/30 text-lg font-mono text-on-surface py-4 outline-none opacity-70" />
-              <div className={`mt-2 flex items-center gap-2 text-[10px] font-headline ${account ? "text-tertiary" : "text-error"}`}>
+              <div className={`mt-2 flex items-center gap-2 text-[10px] font-headline ${account ? "text-secondary" : "text-error"}`}>
                 {account ? <CheckCircle2 size={14} /> : <XCircle size={14} />} {account ? "CONNECTED" : "NOT_CONNECTED"}
               </div>
             </div>
@@ -112,7 +112,7 @@ export function InitializeView() {
             <div className="scanline absolute inset-0 opacity-5" />
             <div className="flex justify-between items-center border-b border-on-surface-variant/10 pb-4 relative z-10">
               <span className="font-headline text-[10px] text-on-surface-variant tracking-widest uppercase font-bold">Encryption_State</span>
-              <span className="text-tertiary font-headline font-bold text-xs uppercase animate-pulse">Ready</span>
+              <span className="text-secondary font-headline font-bold text-xs uppercase animate-pulse">Ready</span>
             </div>
             <div className="space-y-4 relative z-10">
               <div className="flex items-start gap-3">

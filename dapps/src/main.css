@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
@@ -7,21 +7,24 @@
 
 @theme {
   --font-headline: "Space Grotesk", sans-serif;
-  --font-body: "Inter", sans-serif;
+  --font-body: "Space Grotesk", sans-serif;
   --font-mono: "JetBrains Mono", monospace;
-  --color-primary: #00f2ff;
-  --color-secondary: #ff9d00;
-  --color-tertiary: #00ff41;
-  --color-background: #0a0a0c;
-  --color-surface: #131315;
-  --color-surface-low: #1c1b1d;
-  --color-surface-high: #2a2a2c;
-  --color-surface-highest: #353437;
-  --color-on-surface: #e5e1e4;
-  --color-on-surface-variant: #b9cacb;
-  --color-error: #ffb4ab;
-  --color-border: rgba(0, 242, 255, 0.1);
-  --color-ring: #00f2ff;
+
+  /* EVE Frontier palette */
+  --color-primary: #c64f05;
+  --color-primary-bright: #dd5807;
+  --color-secondary: #5ee39c;
+  --color-tertiary: #0c27d8;
+  --color-background: #130904;
+  --color-surface: #181716;
+  --color-surface-low: #2b2827;
+  --color-surface-high: #3c3836;
+  --color-surface-highest: #524e4b;
+  --color-on-surface: #ffffd6;
+  --color-on-surface-variant: #8e8c77;
+  --color-error: #942922;
+  --color-border: rgba(198, 79, 5, 0.15);
+  --color-ring: #c64f05;
   --radius-sm: 0px;
   --radius-md: 0px;
   --radius-lg: 0px;
@@ -37,12 +40,12 @@
 
 @layer utilities {
   .scanline {
-    background: linear-gradient(to bottom, transparent 50%, rgba(0, 242, 255, 0.05) 50%);
+    background: linear-gradient(to bottom, transparent 50%, rgba(198, 79, 5, 0.03) 50%);
     background-size: 100% 4px;
     pointer-events: none;
   }
   .glass-panel {
-    background: linear-gradient(135deg, rgba(0, 242, 255, 0.05) 0%, rgba(28, 27, 29, 0.4) 100%);
+    background: linear-gradient(135deg, rgba(198, 79, 5, 0.04) 0%, rgba(43, 40, 39, 0.4) 100%);
     backdrop-filter: blur(12px);
   }
   .corner-bracket { position: relative; }
@@ -59,6 +62,6 @@
 }
 
 ::-webkit-scrollbar { width: 6px; height: 6px; }
-::-webkit-scrollbar-track { background: #0a0a0c; }
-::-webkit-scrollbar-thumb { background: #2a2a2c; }
-::-webkit-scrollbar-thumb:hover { background: #00f2ff; }
+::-webkit-scrollbar-track { background: #130904; }
+::-webkit-scrollbar-thumb { background: #3c3836; }
+::-webkit-scrollbar-thumb:hover { background: #c64f05; }

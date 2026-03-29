@@ -4,7 +4,6 @@ import { useDAppKit } from "@mysten/dapp-kit-react";
 import { useVault } from "@/hooks/use-vault";
 import { buildGrantMemberTx, buildGrantOfficerTx } from "@/lib/vault-tx";
 import { toast } from "sonner";
-import { WalletGate } from "@/components/capsule/WalletGate";
 
 export function MembersView() {
   const { role, capId, members, refetch } = useVault();
@@ -31,9 +30,8 @@ export function MembersView() {
   };
 
   return (
-    <WalletGate message="Connect wallet to manage guild members.">
-      <div className="space-y-12">
-        <div className="flex justify-between items-end border-b border-on-surface-variant/20 pb-4">
+    <div className="space-y-12">
+      <div className="flex justify-between items-end border-b border-on-surface-variant/20 pb-4">
           <div>
             <h1 className="font-headline text-4xl font-black tracking-tighter text-on-surface mb-2">GUILD PERSONNEL</h1>
             <div className="flex items-center gap-4 text-xs font-mono text-primary opacity-80">
@@ -113,7 +111,6 @@ export function MembersView() {
             </table>
           </section>
         </div>
-      </div>
-    </WalletGate>
+    </div>
   );
 }

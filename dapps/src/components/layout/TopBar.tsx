@@ -5,7 +5,8 @@ import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 
 const navItems = [
-  { path: "/", label: "Vault" },
+  { path: "/", label: "Guilds" },
+  { path: "/vault", label: "Vault" },
   { path: "/create", label: "Create" },
   { path: "/members", label: "Members" },
   { path: "/heartbeat", label: "Heartbeat" },

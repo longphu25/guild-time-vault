@@ -90,7 +90,7 @@ export function useVault(): VaultState {
     role: roleQuery.data?.role ?? "guest",
     capId: roleQuery.data?.capId,
     memberCapId: roleQuery.data?.memberCapId,
-    loading: vaultQuery.isLoading || capsulesQuery.isLoading || heartbeatQuery.isLoading,
+    loading: !vaultQuery.data && vaultQuery.isLoading,
     error: vaultQuery.error?.message ?? capsulesQuery.error?.message ?? null,
     refetch,
   };

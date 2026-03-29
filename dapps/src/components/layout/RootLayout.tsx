@@ -1,8 +1,7 @@
-import { Outlet } from "react-router";
+import { Outlet, useLocation } from "react-router";
 import { TopBar } from "./TopBar";
 import { SideBar } from "./SideBar";
-import { AnimatePresence, motion } from "motion/react";
-import { useLocation } from "react-router";
+import { motion } from "motion/react";
 
 export function RootLayout() {
   const location = useLocation();
@@ -15,17 +14,14 @@ export function RootLayout() {
       <main className="md:ml-64 pt-24 px-6 lg:px-12 pb-12 min-h-screen relative">
         <div className="scanline fixed inset-0 z-0 opacity-10 pointer-events-none" />
         <div className="relative z-10 max-w-7xl mx-auto">
-          <AnimatePresence mode="wait">
-            <motion.div
-              key={location.pathname}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              exit={{ opacity: 0, y: -10 }}
-              transition={{ duration: 0.3, ease: "easeOut" }}
-            >
-              <Outlet />
-            </motion.div>
-          </AnimatePresence>
+          <motion.div
+            key={location.pathname}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.2 }}
+          >
+            <Outlet />
+          </motion.div>
         </div>
 
         {/* Telemetry Overlay */}

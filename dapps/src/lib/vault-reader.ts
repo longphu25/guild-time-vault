@@ -173,3 +173,26 @@ export async function fetchGuildMembers(): Promise<GuildMember[]> {
   const guildId = vaultData?.guild_id ?? "";
   return [...officers, ...members].filter((m) => m.guildId === guildId);
 }
+
+export interface GuildVaultInfo {
+  vaultId: string;
+  guildId: string;
+  capsuleCount: number;
+}
+
+export async function fetchAllVaults(): Promise<GuildVaultInfo[]> {
+  const type = `${vaultConfig.packageId}::vault_core::GuildVault`;
+  const res = await fetch(GQL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: `{ objects(filter: { type: "${type}" }) { nodes { address asMoveObject { contents { json } } } } }`,
+    }),
+  });
+  const json = await res.json();
+  return (json.data?.objects?.nodes ?? []).map((n: any) => ({
+    vaultId: n.address,
+    guildId: n.asMoveObject?.contents?.json?.guild_id ?? "",
+    capsuleCount: Number(n.asMoveObject?.contents?.json?.capsules?.size ?? 0),
+  }));
+}

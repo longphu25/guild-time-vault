@@ -1,11 +1,9 @@
 import { createBrowserRouter } from "react-router";
 import { RootLayout } from "@/components/layout/RootLayout";
-import { Home } from "@/pages/Home";
+import { VaultView } from "@/pages/VaultView";
 import { CreateCapsule } from "@/pages/CreateCapsule";
-import { Timeline } from "@/pages/Timeline";
-import { MyCapsules } from "@/pages/MyCapsules";
-import { Archive } from "@/pages/Archive";
-import { Admin } from "@/pages/Admin";
+import { MembersView } from "@/pages/MembersView";
+import { HeartbeatView } from "@/pages/HeartbeatView";
 import { InitVault } from "@/pages/InitVault";
 import { NotFound } from "@/pages/NotFound";
 
@@ -14,12 +12,10 @@ export const router = createBrowserRouter([
     path: "/",
     element: <RootLayout />,
     children: [
-      { index: true, element: <Home /> },
+      { index: true, element: <VaultView /> },
       { path: "create", element: <CreateCapsule /> },
-      { path: "timeline", element: <Timeline /> },
-      { path: "my-capsules", element: <MyCapsules /> },
-      { path: "archive", element: <Archive /> },
-      { path: "admin", element: <Admin /> },
+      { path: "members", element: <MembersView /> },
+      { path: "heartbeat", element: <HeartbeatView /> },
       { path: "init-vault", element: <InitVault /> },
       { path: "*", element: <NotFound /> },
     ],

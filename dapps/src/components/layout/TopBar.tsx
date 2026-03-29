@@ -1,7 +1,8 @@
-import { Wallet, Copy, Check } from "lucide-react";
+import { Wallet, Copy, Check, LogOut } from "lucide-react";
 import { useState } from "react";
 import { Link, useLocation } from "react-router";
 import { abbreviateAddress, useConnection } from "@evefrontier/dapp-kit";
+import { useVault } from "@/hooks/use-vault";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
 
 const navItems = [
@@ -16,6 +17,7 @@ export function TopBar() {
   const location = useLocation();
   const { handleConnect, handleDisconnect } = useConnection();
   const account = useCurrentAccount();
+  const { role } = useVault();
   const [copied, setCopied] = useState(false);
 
   const copyAddr = () => {
@@ -49,15 +51,15 @@ export function TopBar() {
       <div className="flex items-center gap-4">
         {account ? (
           <>
-            <button onClick={copyAddr} className="flex flex-col items-end cursor-pointer hover:opacity-80 transition-opacity">
-              <span className="font-headline text-[10px] tracking-widest text-secondary uppercase opacity-70">COMMANDER</span>
+            <button onClick={copyAddr} className="flex flex-col items-start cursor-pointer hover:opacity-80 transition-opacity">
+              <span className="font-headline text-[10px] tracking-widest text-secondary uppercase opacity-70">{role.toUpperCase()}</span>
               <span className="font-mono text-xs text-on-surface-variant flex items-center gap-1">
                 {abbreviateAddress(account.address)}
                 {copied ? <Check size={10} className="text-tertiary" /> : <Copy size={10} className="opacity-40" />}
               </span>
             </button>
             <button onClick={handleDisconnect} className="p-2 hover:bg-primary/10 transition-all text-primary">
-              <Wallet size={20} />
+              <LogOut size={20} />
             </button>
           </>
         ) : (

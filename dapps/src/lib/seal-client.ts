@@ -87,7 +87,7 @@ export async function sealDecrypt(
   contextAddr: string,
   userAddress: string,
   signPersonalMessage: (args: { message: Uint8Array }) => Promise<{ signature: string }>,
-  opts?: { memberCapId?: string },
+  opts?: { memberCapId?: string; heartbeatId?: string },
 ): Promise<Uint8Array> {
   const client = getSealClient();
 
@@ -131,12 +131,13 @@ export async function sealDecrypt(
       ],
     });
   } else if (mode === CAPSULE_MODE.DEAD_MAN) {
+    if (!opts?.heartbeatId) throw new Error("Heartbeat ID required to decrypt dead-man capsule");
     tx.moveCall({
       target: TX.sealApproveDeadMan,
       arguments: [
         tx.pure.vector("u8", idBytes),
         tx.object(vaultConfig.vaultObjectId),
-        tx.object(vaultConfig.heartbeatObjectId),
+        tx.object(opts.heartbeatId),
         tx.object(SUI_CLOCK),
       ],
     });

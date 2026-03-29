@@ -1,23 +1,34 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Flex, Text } from "@radix-ui/themes";
-import { useDAppKit } from "@mysten/dapp-kit-react";
+import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
 import { Transaction } from "@mysten/sui/transactions";
 import { VAULT_CONFIG, VAULT_MODULES, CLOCK_OBJECT_ID } from "./config";
+import { findOwnedHeartbeat } from "@/lib/vault-reader";
 
 type ClaimMode = "archive" | "private_inherit" | "dead_man";
 
 export function ClaimCapsuleForm({ onSuccess }: { onSuccess: () => void }) {
     const dAppKit = useDAppKit();
+    const account = useCurrentAccount();
     const [capsuleId, setCapsuleId] = useState("");
     const [claimMode, setClaimMode] = useState<ClaimMode>("archive");
     const [memberCapId, setMemberCapId] = useState("");
     const [officerCapId, setOfficerCapId] = useState("");
+    const [heartbeatId, setHeartbeatId] = useState("");
     const [status, setStatus] = useState("");
+
+    // Auto-detect heartbeat from wallet
+    useEffect(() => {
+        if (!account?.address) return;
+        findOwnedHeartbeat(account.address).then((id) => {
+            if (id) setHeartbeatId(id);
+        });
+    }, [account?.address]);
 
     const handleClaim = async () => {
         if (!capsuleId) { setStatus("Enter capsule ID"); return; }
 
-        const { packageId, vaultObjectId, heartbeatObjectId } = VAULT_CONFIG;
+        const { packageId, vaultObjectId } = VAULT_CONFIG;
         const tx = new Transaction();
 
         try {
@@ -45,12 +56,12 @@ export function ClaimCapsuleForm({ onSuccess }: { onSuccess: () => void }) {
                 });
             } else if (claimMode === "dead_man") {
                 if (!officerCapId) { setStatus("OfficerCap ID required"); return; }
-                if (!heartbeatObjectId) { setStatus("VITE_HEARTBEAT_OBJECT_ID not set"); return; }
+                if (!heartbeatId) { setStatus("No Heartbeat found in wallet"); return; }
                 tx.moveCall({
                     target: `${packageId}::${VAULT_MODULES.VAULT_HEARTBEAT_API}::trigger_dead_man`,
                     arguments: [
                         tx.object(vaultObjectId),
-                        tx.object(heartbeatObjectId),
+                        tx.object(heartbeatId),
                         tx.object(officerCapId),
                         tx.pure.u64(Number(capsuleId)),
                         tx.object(CLOCK_OBJECT_ID),

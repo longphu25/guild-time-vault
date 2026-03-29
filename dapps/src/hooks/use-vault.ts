@@ -4,7 +4,8 @@ import { useCurrentAccount } from "@mysten/dapp-kit-react";
 import {
   fetchVault,
   fetchCapsules,
-  fetchHeartbeat,
+  fetchHeartbeatById,
+  findOwnedHeartbeat,
   detectUserRole,
   fetchGuildMembers,
   type CapsuleData,
@@ -49,8 +50,14 @@ export function useVault(): VaultState {
   });
 
   const heartbeatQuery = useQuery({
-    queryKey: ["heartbeat"],
-    queryFn: fetchHeartbeat,
+    queryKey: ["heartbeat", account?.address],
+    queryFn: async () => {
+      if (!account?.address) return null;
+      const hbId = await findOwnedHeartbeat(account.address);
+      if (!hbId) return null;
+      return fetchHeartbeatById(hbId);
+    },
+    enabled: !!account?.address,
     staleTime: 30_000,
   });
 

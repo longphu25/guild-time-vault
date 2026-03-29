@@ -1,18 +1,24 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Flex, Text } from "@radix-ui/themes";
-import { useDAppKit } from "@mysten/dapp-kit-react";
+import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
 import { Transaction } from "@mysten/sui/transactions";
 import { VAULT_CONFIG, VAULT_MODULES, CLOCK_OBJECT_ID } from "./config";
+import { findOwnedHeartbeat } from "@/lib/vault-reader";
 
 export function HeartbeatPanel() {
     const dAppKit = useDAppKit();
+    const account = useCurrentAccount();
     const [status, setStatus] = useState("");
+    const [heartbeatId, setHeartbeatId] = useState<string | null>(null);
 
-    const { packageId, heartbeatObjectId } = VAULT_CONFIG;
+    useEffect(() => {
+        if (!account?.address) return;
+        findOwnedHeartbeat(account.address).then(setHeartbeatId);
+    }, [account?.address]);
 
     const handlePing = async () => {
-        if (!heartbeatObjectId) {
-            setStatus("VITE_HEARTBEAT_OBJECT_ID not configured");
+        if (!heartbeatId) {
+            setStatus("No Heartbeat object found in your wallet");
             return;
         }
 
@@ -20,9 +26,9 @@ export function HeartbeatPanel() {
             setStatus("Signing...");
             const tx = new Transaction();
             tx.moveCall({
-                target: `${packageId}::${VAULT_MODULES.VAULT_HEARTBEAT_API}::heartbeat`,
+                target: `${VAULT_CONFIG.packageId}::${VAULT_MODULES.VAULT_HEARTBEAT_API}::heartbeat`,
                 arguments: [
-                    tx.object(heartbeatObjectId),
+                    tx.object(heartbeatId),
                     tx.object(CLOCK_OBJECT_ID),
                 ],
             });
@@ -48,6 +54,9 @@ export function HeartbeatPanel() {
                 If you stop pinging past the timeout, officers can
                 trigger dead-man capsules.
             </Text>
+            {heartbeatId && (
+                <Text size="1">Heartbeat: {heartbeatId.slice(0, 16)}...</Text>
+            )}
             <button
                 onClick={handlePing}
                 type="button"

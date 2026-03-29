@@ -66,15 +66,29 @@ export async function fetchVault(): Promise<VaultData | null> {
 }
 
 export async function fetchHeartbeat(): Promise<HeartbeatData | null> {
-  const res = await client.getObject({ objectId: vaultConfig.heartbeatObjectId, include: { json: true } });
+  // Heartbeat is auto-detected per-user via detectUserRole / findOwnedHeartbeat
+  // This function is kept for backward compat but returns null without a known ID
+  return null;
+}
+
+/** Fetch heartbeat by object ID. */
+export async function fetchHeartbeatById(heartbeatId: string): Promise<HeartbeatData | null> {
+  if (!heartbeatId) return null;
+  const res = await client.getObject({ objectId: heartbeatId, include: { json: true } });
   const json = res.object?.json as Record<string, any> | undefined;
   if (!json) return null;
   return {
-    id: vaultConfig.heartbeatObjectId,
+    id: heartbeatId,
     vault_id: json.vault_id,
     last_ping_ms: Number(json.last_ping_ms),
     timeout_ms: Number(json.timeout_ms),
   };
+}
+
+/** Find Heartbeat object owned by address. */
+export async function findOwnedHeartbeat(address: string): Promise<string | null> {
+  const res = await client.listOwnedObjects({ owner: address, type: TYPES.heartbeat, limit: 1 });
+  return res.objects?.length > 0 ? res.objects[0].objectId : null;
 }
 
 export async function fetchCapsules(): Promise<CapsuleData[]> {

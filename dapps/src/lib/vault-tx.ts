@@ -69,12 +69,12 @@ export function buildClaimPrivateInheritTx(capsuleId: number) {
 }
 
 /** heartbeat(heart: &mut Heartbeat, clock: &Clock) */
-export function buildHeartbeatTx() {
+export function buildHeartbeatTx(heartbeatId: string) {
   const tx = new Transaction();
   tx.moveCall({
     target: TX.heartbeat,
     arguments: [
-      tx.object(vaultConfig.heartbeatObjectId),
+      tx.object(heartbeatId),
       tx.object(SUI_CLOCK),
     ],
   });
@@ -82,13 +82,13 @@ export function buildHeartbeatTx() {
 }
 
 /** trigger_dead_man(vault, heartbeat, officer_cap, capsule_id, clock, ctx) */
-export function buildTriggerDeadManTx(officerCapId: string, capsuleId: number) {
+export function buildTriggerDeadManTx(heartbeatId: string, officerCapId: string, capsuleId: number) {
   const tx = new Transaction();
   tx.moveCall({
     target: TX.triggerDeadMan,
     arguments: [
       tx.object(vaultConfig.vaultObjectId),
-      tx.object(vaultConfig.heartbeatObjectId),
+      tx.object(heartbeatId),
       tx.object(officerCapId),
       tx.pure.u64(capsuleId),
       tx.object(SUI_CLOCK),

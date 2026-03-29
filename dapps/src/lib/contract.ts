@@ -44,6 +44,7 @@ export const TYPES = {
   capsule: `${vaultConfig.packageId}::${MOD.core}::Capsule`,
   vault: `${vaultConfig.packageId}::${MOD.core}::GuildVault`,
   heartbeat: `${vaultConfig.packageId}::${MOD.core}::Heartbeat`,
+  registry: `${vaultConfig.packageId}::${MOD.core}::VaultRegistry`,
 } as const;
 
 export { MOD };

@@ -25,11 +25,11 @@ type ClaimParams = {
 
 export function useVaultActions() {
     const dAppKit = useDAppKit();
-    const { packageId, vaultObjectId, heartbeatObjectId } = VAULT_CONFIG;
+    const { packageId, vaultObjectId } = VAULT_CONFIG;
 
     const execute = async (tx: Transaction) => {
         return dAppKit.signAndExecute({ transaction: tx });
     };
 
-    return { execute, packageId, vaultObjectId, heartbeatObjectId };
+    return { execute, packageId, vaultObjectId };
 }

@@ -2,8 +2,8 @@
 
 export const VAULT_CONFIG = {
     packageId: import.meta.env.VITE_VAULT_PACKAGE_ID || "",
+    registryObjectId: import.meta.env.VITE_VAULT_REGISTRY_ID || "",
     vaultObjectId: import.meta.env.VITE_VAULT_OBJECT_ID || "",
-    heartbeatObjectId: import.meta.env.VITE_HEARTBEAT_OBJECT_ID || "",
 } as const;
 
 export const VAULT_MODULES = {
@@ -11,6 +11,7 @@ export const VAULT_MODULES = {
     VAULT_CAPSULE_API: "vault_capsule_api",
     VAULT_HEARTBEAT_API: "vault_heartbeat_api",
     VAULT_VIEWS: "vault_views",
+    VAULT_REGISTRY: "vault_registry",
 } as const;
 
 export const CAPSULE_MODES = {

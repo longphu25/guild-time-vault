@@ -5,4 +5,5 @@ export const MODULE = {
     VAULT_CAPSULE_API: "vault_capsule_api",
     VAULT_HEARTBEAT_API: "vault_heartbeat_api",
     VAULT_VIEWS: "vault_views",
+    VAULT_REGISTRY: "vault_registry",
 } as const;

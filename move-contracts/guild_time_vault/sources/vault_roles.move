@@ -3,7 +3,7 @@
 module guild::vault_roles;
 
 use sui::clock::Clock;
-use guild::vault_core::{Self, GuildVault};
+use guild::vault_core::{Self, GuildVault, VaultRegistry};
 
 // === Errors ===
 #[error(code = 0)]
@@ -30,8 +30,10 @@ public fun officer_guild_id(cap: &GuildOfficerCap): address { cap.guild_id }
 
 /// Leader creates a new GuildVault and receives an OfficerCap.
 /// Also creates a Heartbeat for dead-man switch.
+/// Registers the vault in the global VaultRegistry.
 #[allow(lint(self_transfer))]
 public fun init_guild_vault(
+    registry: &mut VaultRegistry,
     guild_id: address,
     timeout_ms: u64,
     clock: &Clock,
@@ -39,6 +41,15 @@ public fun init_guild_vault(
 ) {
     let vault = vault_core::new_vault(guild_id, ctx);
     let vault_id = object::id_address(&vault);
+
+    // Register in global registry
+    vault_core::register_vault(
+        registry,
+        vault_id,
+        guild_id,
+        ctx.sender(),
+        clock.timestamp_ms(),
+    );
 
     let heartbeat = vault_core::new_heartbeat(
         vault_id,

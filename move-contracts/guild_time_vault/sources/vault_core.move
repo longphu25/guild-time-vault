@@ -18,6 +18,24 @@ const ECapsuleNotFound: vector<u8> = b"Capsule not found";
 
 // === Core Structs ===
 
+/// Global registry tracking all vaults and their creators.
+/// Created once via `init` and shared.
+public struct VaultRegistry has key {
+    id: UID,
+    /// vault_object_address → VaultEntry
+    entries: Table<address, VaultEntry>,
+    /// ordered list of vault addresses for iteration
+    vault_list: vector<address>,
+}
+
+/// Metadata for a registered vault.
+public struct VaultEntry has store, drop, copy {
+    vault_addr: address,
+    guild_id: address,
+    creator: address,
+    created_at_ms: u64,
+}
+
 public struct GuildVault has key {
     id: UID,
     guild_id: address,
@@ -66,11 +84,64 @@ public struct DeadManTriggered has copy, drop {
     time_ms: u64,
 }
 
+public struct VaultRegistered has copy, drop {
+    vault_addr: address,
+    guild_id: address,
+    creator: address,
+}
+
 // === Mode Constants Accessors ===
 
 public fun mode_archive(): u8 { MODE_ARCHIVE }
 public fun mode_private_inherit(): u8 { MODE_PRIVATE_INHERIT }
 public fun mode_dead_man(): u8 { MODE_DEAD_MAN }
+
+// === Init (one-time: creates VaultRegistry) ===
+
+fun init(ctx: &mut TxContext) {
+    let registry = VaultRegistry {
+        id: object::new(ctx),
+        entries: table::new(ctx),
+        vault_list: vector[],
+    };
+    transfer::share_object(registry);
+}
+
+// === VaultRegistry Helpers ===
+
+public(package) fun register_vault(
+    registry: &mut VaultRegistry,
+    vault_addr: address,
+    guild_id: address,
+    creator: address,
+    created_at_ms: u64,
+) {
+    let entry = VaultEntry { vault_addr, guild_id, creator, created_at_ms };
+    registry.entries.add(vault_addr, entry);
+    registry.vault_list.push_back(vault_addr);
+    event::emit(VaultRegistered { vault_addr, guild_id, creator });
+}
+
+public fun registry_vault_count(registry: &VaultRegistry): u64 {
+    registry.vault_list.length()
+}
+
+public fun registry_vault_at(registry: &VaultRegistry, index: u64): address {
+    registry.vault_list[index]
+}
+
+public fun registry_has_vault(registry: &VaultRegistry, vault_addr: address): bool {
+    registry.entries.contains(vault_addr)
+}
+
+public fun registry_entry(registry: &VaultRegistry, vault_addr: address): &VaultEntry {
+    &registry.entries[vault_addr]
+}
+
+public fun entry_vault_addr(entry: &VaultEntry): address { entry.vault_addr }
+public fun entry_guild_id(entry: &VaultEntry): address { entry.guild_id }
+public fun entry_creator(entry: &VaultEntry): address { entry.creator }
+public fun entry_created_at_ms(entry: &VaultEntry): u64 { entry.created_at_ms }
 
 // === GuildVault Helpers ===
 
@@ -236,4 +307,11 @@ public(package) fun emit_dead_man_triggered(
     time_ms: u64,
 ) {
     event::emit(DeadManTriggered { vault_id, guild_id, capsule_id, time_ms });
+}
+
+// === Test Helpers ===
+
+#[test_only]
+public fun init_for_testing(ctx: &mut TxContext) {
+    init(ctx);
 }

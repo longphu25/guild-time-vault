@@ -2,7 +2,7 @@
 module guild::vault_views;
 
 use sui::clock::Clock;
-use guild::vault_core::{Self, GuildVault, Capsule, Heartbeat};
+use guild::vault_core::{Self, GuildVault, Capsule, Heartbeat, VaultRegistry};
 
 // === Vault Views ===
 
@@ -54,4 +54,14 @@ public fun get_heartbeat_timeout(heart: &Heartbeat): u64 {
 
 public fun is_heartbeat_timed_out(heart: &Heartbeat, clock: &Clock): bool {
     vault_core::is_timed_out(heart, clock.timestamp_ms())
+}
+
+// === Registry Views ===
+
+public fun registry_vault_count(registry: &VaultRegistry): u64 {
+    vault_core::registry_vault_count(registry)
+}
+
+public fun registry_has_vault(registry: &VaultRegistry, vault_addr: address): bool {
+    vault_core::registry_has_vault(registry, vault_addr)
 }

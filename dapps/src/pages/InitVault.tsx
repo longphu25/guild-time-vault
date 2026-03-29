@@ -1,6 +1,7 @@
 import { useState } from "react";
-import { Rocket, Shield, AlertTriangle, Terminal, Activity, CheckCircle2 } from "lucide-react";
+import { Rocket, Shield, AlertTriangle, Terminal, Activity, CheckCircle2, XCircle } from "lucide-react";
 import { useDAppKit, useCurrentAccount } from "@mysten/dapp-kit-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { Transaction } from "@mysten/sui/transactions";
 import { vaultConfig } from "@/lib/vault-config";
 import { toast } from "sonner";
@@ -11,6 +12,7 @@ const TARGET = `${vaultConfig.packageId}::vault_roles::init_guild_vault` as `${s
 export function InitializeView() {
   const { signAndExecuteTransaction } = useDAppKit();
   const account = useCurrentAccount();
+  const queryClient = useQueryClient();
   const [timeoutDays, setTimeoutDays] = useState(14);
   const [busy, setBusy] = useState(false);
   const [result, setResult] = useState("");
@@ -23,6 +25,7 @@ export function InitializeView() {
       tx.moveCall({
         target: TARGET,
         arguments: [
+          tx.object(vaultConfig.registryId),
           tx.pure.address(account.address),
           tx.pure.u64(timeoutDays * 24 * 60 * 60 * 1000),
           tx.object(SUI_CLOCK),
@@ -32,6 +35,8 @@ export function InitializeView() {
       const digest = (res as any)?.Transaction?.digest ?? (res as any)?.digest ?? "";
       setResult(`Vault initialized!\nTx: ${digest}\nhttps://suiscan.xyz/testnet/tx/${digest}`);
       toast.success("Vault initialized!");
+      queryClient.invalidateQueries({ queryKey: ["allVaults"] });
+      queryClient.invalidateQueries({ queryKey: ["userObjects"] });
     } catch (err: any) {
       toast.error(err.message ?? "Failed");
     } finally {
@@ -61,8 +66,8 @@ export function InitializeView() {
             <div className="relative">
               <input type="text" value={account?.address ?? ""} readOnly
                 className="w-full bg-transparent border-0 border-b border-on-surface-variant/30 text-lg font-mono text-on-surface py-4 outline-none opacity-70" />
-              <div className="absolute right-0 bottom-4 flex items-center gap-2 text-[10px] font-headline text-tertiary">
-                <CheckCircle2 size={14} /> {account ? "CONNECTED" : "NOT_CONNECTED"}
+              <div className={`mt-2 flex items-center gap-2 text-[10px] font-headline ${account ? "text-tertiary" : "text-error"}`}>
+                {account ? <CheckCircle2 size={14} /> : <XCircle size={14} />} {account ? "CONNECTED" : "NOT_CONNECTED"}
               </div>
             </div>
           </div>

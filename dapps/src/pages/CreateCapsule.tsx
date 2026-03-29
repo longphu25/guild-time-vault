@@ -95,7 +95,7 @@ export function CreateCapsule() {
       await signAndExecuteTransaction({ transaction: tx });
       toast.success("Capsule launched into the stars!");
       refetch();
-      setTimeout(() => navigate("/my-capsules"), 1500);
+      setTimeout(() => navigate("/vault"), 1500);
     } catch (err: any) {
       const msg = err.message ?? "Transaction failed";
       if (msg.includes("rejected") || msg.includes("denied") || msg.includes("cancel")) {

@@ -6,6 +6,7 @@ import { useVault } from "@/hooks/use-vault";
 import { buildHeartbeatTx, buildTriggerDeadManTx } from "@/lib/vault-tx";
 import { CAPSULE_MODE } from "@/lib/contract";
 import { toast } from "sonner";
+import { WalletGate } from "@/components/capsule/WalletGate";
 
 export function HeartbeatView() {
   const { role, capId, heartbeat, heartbeatId, vaultId, capsules, refetch } = useVault();
@@ -47,7 +48,7 @@ export function HeartbeatView() {
   };
 
   return (
-    <>
+    <WalletGate message="Connect wallet to manage heartbeat and dead man's switch.">
       <div className="space-y-12">
         <header className="border-l-4 border-primary pl-6 py-2">
           <div className="flex items-center gap-2 mb-1">
@@ -156,6 +157,6 @@ export function HeartbeatView() {
           </div>
         </div>
       </div>
-    </>
+    </WalletGate>
   );
 }

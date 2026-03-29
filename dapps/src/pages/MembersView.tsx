@@ -1,6 +1,7 @@
 import { useState } from "react";
 import { UserPlus, Shield, User } from "lucide-react";
 import { useDAppKit } from "@mysten/dapp-kit-react";
+import { useQueryClient } from "@tanstack/react-query";
 import { useVault } from "@/hooks/use-vault";
 import { buildGrantMemberTx, buildGrantOfficerTx } from "@/lib/vault-tx";
 import { toast } from "sonner";
@@ -8,6 +9,7 @@ import { toast } from "sonner";
 export function MembersView() {
   const { role, capId, vaultId, members, refetch } = useVault();
   const { signAndExecuteTransaction } = useDAppKit();
+  const queryClient = useQueryClient();
   const [addr, setAddr] = useState("");
   const [grantRole, setGrantRole] = useState<"member" | "officer">("member");
   const [busy, setBusy] = useState(false);
@@ -21,6 +23,9 @@ export function MembersView() {
       await signAndExecuteTransaction({ transaction: tx });
       toast.success(`${grantRole === "officer" ? "Officer" : "Member"} cap granted!`);
       setAddr("");
+      // Wait for GraphQL indexer to catch up
+      await new Promise((r) => setTimeout(r, 3000));
+      queryClient.invalidateQueries({ queryKey: ["members"] });
       refetch();
     } catch (err: any) {
       toast.error(err.message ?? "Grant failed");

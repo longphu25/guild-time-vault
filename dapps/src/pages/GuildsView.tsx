@@ -24,14 +24,14 @@ function GuildCard({ vault }: { vault: GuildVaultInfo }) {
         </div>
         <div className="grid grid-cols-2 gap-4 mb-8">
           <div className="bg-surface-high/40 p-3 border border-on-surface-variant/5">
-            <div className="font-headline text-[9px] text-on-surface-variant uppercase mb-1 font-bold">Guild ID</div>
-            <div className="font-mono text-xs text-on-surface">{vault.guildId.slice(0, 8)}...</div>
-          </div>
-          <div className="bg-surface-high/40 p-3 border border-on-surface-variant/5">
             <div className="font-headline text-[9px] text-on-surface-variant uppercase mb-1 font-bold">Capsules</div>
             <div className="font-headline font-bold text-lg text-on-surface flex items-center gap-2">
               <Trophy size={14} className="text-on-surface-variant/40" />{vault.capsuleCount}
             </div>
+          </div>
+          <div className="bg-surface-high/40 p-3 border border-on-surface-variant/5">
+            <div className="font-headline text-[9px] text-on-surface-variant uppercase mb-1 font-bold">{vault.creator ? "Creator" : "Guild ID"}</div>
+            <div className="font-mono text-xs text-on-surface">{vault.creator ? `${vault.creator.slice(0, 8)}...` : `${vault.guildId.slice(0, 8)}...`}</div>
           </div>
         </div>
         <Link to={`/vault?id=${vault.vaultId}`}

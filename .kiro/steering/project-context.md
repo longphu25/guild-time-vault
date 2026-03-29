@@ -31,13 +31,14 @@ builder-scaffold/
 │   │   └── Published.toml               # Metadata deploy testnet
 │   ├── guild_time_vault/        # Guild Time Vault — time-locked capsules + dead-man switch
 │   │   ├── sources/
-│   │   │   ├── vault_core.move          # Core structs, events, internal helpers
+│   │   │   ├── vault_core.move          # Core structs, events, VaultRegistry, internal helpers
 │   │   │   ├── vault_roles.move         # GuildMemberCap/GuildOfficerCap, grant/revoke
 │   │   │   ├── vault_capsule_api.move   # Create/claim/delete capsule (3 modes)
 │   │   │   ├── vault_heartbeat_api.move # Heartbeat ping, dead-man trigger
-│   │   │   └── vault_views.move         # View functions cho UI/indexer
-│   │   ├── tests/vault_tests.move       # 17 tests covering all user flows
-│   │   └── Move.toml                    # Package: guild address, Sui dependency
+│   │   │   ├── vault_views.move         # View functions cho UI/indexer
+│   │   │   └── vault_registry.move      # Registry view functions (pagination, lookup)
+│   │   ├── tests/vault_tests.move       # 18 tests covering all user flows + registry
+│   │   └── Move.toml                    # Package: guild address (implicit Sui dep)
 │   └── storage_unit_extension/  # Template trống cho storage unit extension
 │       ├── sources/storage_unit_extension.move
 │       ├── tests/storage_unit_extension_tests.move
@@ -158,20 +159,23 @@ builder-scaffold/
 
 ### guild_time_vault
 
-5 module, sử dụng **capability pattern** cho role-based access control. Package address: `guild`.
+7 module, sử dụng **capability pattern** cho role-based access control + **VaultRegistry** cho on-chain vault tracking. Package address: `guild`.
 
 #### vault_core.move
+- `VaultRegistry` (shared) — tạo tự động qua `init()` khi publish, track tất cả vaults
+- `VaultEntry` — metadata: vault_addr, guild_id, creator, created_at_ms
 - `GuildVault` (shared) — lưu capsules trong `Table<u64, Capsule>`, auto-increment ID
 - `Capsule` — metadata: creator, mode (u8), unlock_time_ms, beneficiary, walrus_blob_id, seal_policy_id, claimed
 - `Heartbeat` — dead-man switch: vault_id, last_ping_ms, timeout_ms
-- Events: `CapsuleCreated`, `CapsuleClaimed`, `DeadManTriggered`
+- Events: `CapsuleCreated`, `CapsuleClaimed`, `DeadManTriggered`, `VaultRegistered`
 - Modes: `ARCHIVE=0`, `PRIVATE_INHERIT=1`, `DEAD_MAN=2`
+- Registry helpers: `register_vault`, `registry_vault_count`, `registry_vault_at`, `registry_has_vault`, `registry_entry`, `entry_*` accessors
 - Internal helpers: `new_vault`, `new_capsule`, `new_heartbeat`, `share_vault`, `transfer_heartbeat`, `destroy_capsule`
 
 #### vault_roles.move
 - `GuildMemberCap { guild_id }` — cấp cho member
 - `GuildOfficerCap { guild_id }` — superset quyền, cấp cho officer/leader
-- `init_guild_vault()` — tạo vault (shared) + heartbeat + officer cap cho leader
+- `init_guild_vault(registry, guild_id, timeout_ms, clock, ctx)` — tạo vault (shared) + heartbeat + officer cap cho leader, đăng ký vault vào VaultRegistry
 - `grant_member()` / `grant_officer()` — officer cấp cap cho address
 - `revoke_member()` / `revoke_officer()` — officer thu hồi cap
 
@@ -188,7 +192,17 @@ builder-scaffold/
 - `trigger_dead_man()` — officer trigger khi heartbeat timeout → claim DEAD_MAN capsule
 
 #### vault_views.move
-- View functions cho UI/indexer: `vault_guild_id`, `vault_capsule_count`, `get_capsule_mode`, `get_capsule_unlock_time`, `is_capsule_claimed`, `is_capsule_unlockable`, `is_heartbeat_timed_out`
+- View functions cho UI/indexer: `vault_guild_id`, `vault_capsule_count`, `get_capsule_mode`, `get_capsule_unlock_time`, `is_capsule_claimed`, `is_capsule_unlockable`, `is_heartbeat_timed_out`, `registry_vault_count`, `registry_has_vault`
+
+#### vault_registry.move (Registry views)
+- `vault_count(registry)` — tổng số vaults đã đăng ký
+- `vault_at(registry, index)` — vault address tại index
+- `has_vault(registry, vault_addr)` — kiểm tra vault đã đăng ký
+- `entry(registry, vault_addr)` — lấy VaultEntry đầy đủ
+- `vault_creator(registry, vault_addr)` — creator address
+- `vault_guild_id(registry, vault_addr)` — guild_id
+- `vault_created_at(registry, vault_addr)` — timestamp tạo
+- `list_vaults(registry, offset, limit)` — pagination danh sách vaults
 
 #### vault_seal.move (Seal integration)
 - `seal_approve_archive()` — entry, Seal key server gọi via dry_run: kiểm tra GuildMemberCap + time + claimed
@@ -313,12 +327,13 @@ EveFrontierProvider (queryClient)
 - **AssemblyInfo.tsx**: `useSmartObject()` → hiển thị assembly name, type, state, ID, owner character
 
 ### Vault UI Components (dapps/src/vault/)
-- **VaultDashboard.tsx**: Tab navigation (Overview / Create / Claim / Heartbeat), hiển thị vault info qua `getObjectWithJson()`
+- **VaultDashboard.tsx**: Tab navigation (Overview / Registry / Create / Claim / Heartbeat), hiển thị vault info qua `getObjectWithJson()`
 - **CreateCapsuleForm.tsx**: Form tạo capsule — chọn mode, unlock date, beneficiary, cap ID → `dAppKit.signAndExecute()`
-- **ClaimCapsuleForm.tsx**: Form claim capsule — chọn claim mode (archive/private_inherit/dead_man), capsule ID → sign tx
-- **HeartbeatPanel.tsx**: Nút "Ping Now" gọi heartbeat contract
-- **config.ts**: Vault package/object IDs từ `VITE_*` env vars, module names, mode constants
+- **ClaimCapsuleForm.tsx**: Form claim capsule — chọn claim mode (archive/private_inherit/dead_man), capsule ID, auto-detect heartbeat từ wallet
+- **HeartbeatPanel.tsx**: Nút "Ping Now" gọi heartbeat contract, auto-detect Heartbeat object từ wallet
+- **config.ts**: Vault package/registry/vault IDs từ `VITE_*` env vars, module names, mode constants
 - **useVaultData.ts**: Hook fetch vault data qua GraphQL (`getObjectWithJson`)
+- **use-registry.ts**: Hook fetch VaultRegistry data (vault list) qua GraphQL
 
 ### GraphQL Queries (queries.ts)
 - `getAssemblyWithOwner()` — assembly + character info
@@ -465,14 +480,17 @@ WORLD_PACKAGE_ID=                      # từ world-contracts deploy
 BUILDER_PACKAGE_ID=                    # từ publish custom contract
 EXTENSION_CONFIG_ID=                   # từ publish output
 VAULT_PACKAGE_ID=                      # từ publish guild_time_vault
+VAULT_REGISTRY_ID=                     # auto-created on publish (init)
 VAULT_OBJECT_ID=                       # từ init-vault output
-HEARTBEAT_OBJECT_ID=                   # từ init-vault output
-OFFICER_CAP_ID=                        # từ init-vault output
+HEARTBEAT_OBJECT_ID=                   # từ init-vault output (owned by leader)
+OFFICER_CAP_ID=                        # từ init-vault output (owned by leader)
 MEMBER_CAP_ID=                         # từ grant-member output
 GUILD_ID=                              # address đại diện guild
 HEARTBEAT_TIMEOUT_MS=1209600000        # 14 ngày (default)
 TENANT=dev
 ```
+
+> **Note**: `HEARTBEAT_OBJECT_ID` và `OFFICER_CAP_ID` là owned objects — frontend auto-detect từ wallet qua `listOwnedObjects` by type, không cần hardcode trong dapps/.env.
 
 ---
 
@@ -525,14 +543,16 @@ TENANT=dev
 ### Deployed Contract IDs (Sui Testnet)
 
 ```
-VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
-VAULT_OBJECT_ID=0x7efbabb12c7d3dd23608a785e71c1ac0d3ee03ac1aedcf69a85ddd028dd41861   (GuildVault - shared)
-HEARTBEAT_OBJECT_ID=0x9b5f350cf3a219040902acac6935c34ce6a509376d49000bd9050e9be6089b2c
-OFFICER_CAP_ID=0x55e460945ce195f9bca53a71fa57a5784a503eb5e17dd06b2cbf91bd26faee3a
+# v3 — with VaultRegistry
+VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
+VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3   (VaultRegistry - shared, auto-created on publish)
 DEPLOYER_ADDRESS=0xdfdd6484f7f94c80daefbfee06728f60236fde6bc229e30453306166a6b5691e
+
+# v2 (deprecated — no VaultRegistry)
+# VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
 ```
 
-Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_seal`
+Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_registry`, `vault_seal`
 
 ### Deploy guild_time_vault lên testnet
 
@@ -540,16 +560,16 @@ Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`
 # 1. Ensure Sui CLI points to testnet
 sui client switch --env testnet
 
-# 2. Publish contract
-sui client publish move-contracts/guild_time_vault --gas-budget 100000000
-# → Note PackageID from output
+# 2. Publish contract (VaultRegistry auto-created via init)
+sui client publish move-contracts/guild_time_vault --gas-budget 200000000
+# → Note VAULT_PACKAGE_ID + VAULT_REGISTRY_ID (shared VaultRegistry) from output
 
-# 3. Init vault (guild_id = your address, timeout = 14 days)
+# 3. Init vault (registry = shared VaultRegistry, guild_id = your address, timeout = 14 days)
 sui client call \
   --package <VAULT_PACKAGE_ID> \
   --module vault_roles \
   --function init_guild_vault \
-  --args <YOUR_ADDRESS> 1209600000 0x6 \
+  --args <VAULT_REGISTRY_ID> <YOUR_ADDRESS> 1209600000 0x6 \
   --gas-budget 10000000
 # → Note GuildVault (shared), Heartbeat, GuildOfficerCap IDs from output
 ```
@@ -557,10 +577,10 @@ sui client call \
 ### Kết nối dApp với Utopia
 
 ```bash
-# 1. Cập nhật dapps/.env
-VITE_VAULT_PACKAGE_ID=0xbfd856ec0a25d1083a18e9253a1265947eff2d7da14950d4d659646c01b698cc
-VITE_VAULT_OBJECT_ID=0x7b11f81dfaa50a61962b5530580aa8b280275adc50658b73a50d703e7a2f45bd
-VITE_HEARTBEAT_OBJECT_ID=0x59c98dede4619868c70a15c127ef383dfb69644a7670fdc9b0ca8072b42a05ba
+# 1. Cập nhật dapps/.env (heartbeat + caps auto-detected from wallet)
+VITE_VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
+VITE_VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
+VITE_VAULT_OBJECT_ID=<from init-vault output>
 
 # 2. Chạy dApp
 cd dapps && bun run dev
@@ -595,17 +615,19 @@ Sui Blockchain (Testnet / Localnet)
     │   └── Write: JumpPermit, events
     │
     └── guild_time_vault
+        ├── VaultRegistry (shared) — tracks all vaults + creators
         ├── GuildVault (shared) — capsules in Table
         ├── Capabilities: GuildMemberCap, GuildOfficerCap
         ├── Heartbeat — dead-man switch
-        └── Events: CapsuleCreated, CapsuleClaimed, DeadManTriggered
+        └── Events: CapsuleCreated, CapsuleClaimed, DeadManTriggered, VaultRegistered
     │
     ▼
 GraphQL Indexer (optional, PostgreSQL)
     │
     ▼
 dApp Frontend (React)
-    ├── VaultDashboard: overview, create, claim, heartbeat
+    ├── VaultDashboard: overview, registry, create, claim, heartbeat
+    ├── Auto-detect: Heartbeat, OfficerCap, MemberCap from wallet
     ├── Assembly info, wallet status
     └── EVE Vault connect (zkLogin)
 ```
@@ -624,6 +646,8 @@ dApp Frontend (React)
 8. **Config Hydration**: Load `extracted-object-ids.json` từ deployments/ để fill world config tự động
 9. **EVE Vault Identity**: zkLogin-based wallet, dApp connect qua browser extension, scripts dùng Ed25519Keypair trực tiếp
 10. **Seal Access Control**: `seal_approve*` entry functions cho Seal key server evaluation, IBE identity encoding `[mode][capsule_id][addr]`, side-effect free dry_run
+11. **On-chain Registry**: `VaultRegistry` shared object tạo tự động khi publish, track tất cả vaults + creators + guild_id + timestamp. Frontend query qua `vault_list` vector + `entries` Table.
+12. **Wallet-based Object Detection**: Frontend auto-detect owned objects (Heartbeat, OfficerCap, MemberCap) từ wallet address qua `listOwnedObjects` by type — không cần hardcode object IDs trong env.
 
 ---
 
@@ -670,9 +694,9 @@ dApp Frontend (React)
 
 | Loại | Số file |
 |------|---------|
-| Move contracts (.move) | 12 (8 sources + 3 tests + 1 template) |
+| Move contracts (.move) | 13 (9 sources + 3 tests + 1 template) |
 | TypeScript scripts (.ts) | 25 |
-| React components (.tsx) | 11 (5 base + 6 vault) |
+| React components (.tsx) | 12 (5 base + 7 vault) |
 | Shell scripts (.sh) | 4 |
 | Config files (json/toml/yaml) | 15 |
 | Documentation (.md) | 12 |

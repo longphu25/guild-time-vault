@@ -223,16 +223,16 @@ Guild Time Vault provides time-locked capsules with role-based access control an
 **Deploy to testnet:**
 
 ```bash
-# Publish contract
-sui client publish move-contracts/guild_time_vault --gas-budget 100000000
-# → Note VAULT_PACKAGE_ID from Published Objects
+# Publish contract (VaultRegistry auto-created via init)
+sui client publish move-contracts/guild_time_vault --gas-budget 200000000
+# → Note VAULT_PACKAGE_ID + VAULT_REGISTRY_ID (shared VaultRegistry) from output
 
-# Init vault (guild_id = your address, timeout = 14 days)
+# Init vault (registry = shared VaultRegistry, guild_id = your address, timeout = 14 days)
 sui client call \
   --package <VAULT_PACKAGE_ID> \
   --module vault_roles \
   --function init_guild_vault \
-  --args <YOUR_ADDRESS> 1209600000 0x6 \
+  --args <VAULT_REGISTRY_ID> <YOUR_ADDRESS> 1209600000 0x6 \
   --gas-budget 10000000
 # → Note GuildVault (shared), Heartbeat, GuildOfficerCap IDs
 ```
@@ -240,22 +240,22 @@ sui client call \
 **Testnet deployment (already deployed):**
 
 ```
-VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
-VAULT_OBJECT_ID=0x7efbabb12c7d3dd23608a785e71c1ac0d3ee03ac1aedcf69a85ddd028dd41861
-HEARTBEAT_OBJECT_ID=0x9b5f350cf3a219040902acac6935c34ce6a509376d49000bd9050e9be6089b2c
-OFFICER_CAP_ID=0x55e460945ce195f9bca53a71fa57a5784a503eb5e17dd06b2cbf91bd26faee3a
+# v3 — with VaultRegistry
+VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
+VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
 ```
 
-Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_seal`
+Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_registry`, `vault_seal`
 
 **Interact via scripts:**
 
 ```bash
 # Add to .env
-VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
-VAULT_OBJECT_ID=0x7efbabb12c7d3dd23608a785e71c1ac0d3ee03ac1aedcf69a85ddd028dd41861
-HEARTBEAT_OBJECT_ID=0x9b5f350cf3a219040902acac6935c34ce6a509376d49000bd9050e9be6089b2c
-OFFICER_CAP_ID=0x55e460945ce195f9bca53a71fa57a5784a503eb5e17dd06b2cbf91bd26faee3a
+VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
+VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
+VAULT_OBJECT_ID=<from init-vault output>
+HEARTBEAT_OBJECT_ID=<from init-vault output>
+OFFICER_CAP_ID=<from init-vault output>
 
 # Grant member
 MEMBER_ADDRESS=0x... bun run vault:grant-member
@@ -273,10 +273,10 @@ bun run vault:heartbeat
 **Connect dApp with Utopia (EVE Vault):**
 
 ```bash
-# 1. Update dapps/.env
-VITE_VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
-VITE_VAULT_OBJECT_ID=0x7efbabb12c7d3dd23608a785e71c1ac0d3ee03ac1aedcf69a85ddd028dd41861
-VITE_HEARTBEAT_OBJECT_ID=0x9b5f350cf3a219040902acac6935c34ce6a509376d49000bd9050e9be6089b2c
+# 1. Update dapps/.env (heartbeat + caps auto-detected from wallet)
+VITE_VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
+VITE_VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
+VITE_VAULT_OBJECT_ID=<from init-vault output>
 
 # 2. Start dApp
 cd dapps && bun run dev

@@ -30,7 +30,10 @@ export function TopBar() {
   return (
     <header className="fixed top-0 w-full z-50 bg-background/80 backdrop-blur-xl border-b border-primary/20 shadow-[0_0_15px_rgba(0,242,255,0.1)] flex justify-between items-center px-6 py-3">
       <div className="flex items-center gap-8">
-        <Link to="/" className="text-xl font-black text-primary tracking-tighter font-headline">VAULT_FRONTIER</Link>
+        <Link to="/" className="flex items-center gap-2">
+          <img src="/assets/lorelock-transparent.png" alt="LoreLock" className="h-8 w-8" />
+          <span className="text-xl font-black text-on-surface tracking-tighter font-headline">LORELOCK</span>
+        </Link>
         <nav className="hidden md:flex gap-6">
           {navItems.map((item) => (
             <Link
@@ -48,25 +51,22 @@ export function TopBar() {
         </nav>
       </div>
 
-      <div className="flex items-center gap-4">
-        {account ? (
-          <>
-            <button onClick={copyAddr} className="flex flex-col items-start cursor-pointer hover:opacity-80 transition-opacity">
-              <span className="font-headline text-[10px] tracking-widest text-secondary uppercase opacity-70">{role.toUpperCase()}</span>
-              <span className="font-mono text-xs text-on-surface-variant flex items-center gap-1">
-                {abbreviateAddress(account.address)}
-                {copied ? <Check size={10} className="text-secondary" /> : <Copy size={10} className="opacity-40" />}
-              </span>
-            </button>
-            <button onClick={handleDisconnect} className="p-2 hover:bg-primary/10 transition-all text-primary">
-              <LogOut size={20} />
-            </button>
-          </>
-        ) : (
-          <button onClick={handleConnect} className="px-4 py-2 border border-primary/40 text-primary font-headline text-xs tracking-widest hover:bg-primary/10 transition-all flex items-center gap-2">
-            <Wallet size={16} /> CONNECT
+      <div className="flex items-center gap-4 h-10">
+        <div className={`${account ? "flex" : "hidden"} items-center gap-4`}>
+          <button onClick={copyAddr} className="flex flex-col items-start cursor-pointer hover:opacity-80 transition-opacity">
+            <span className="font-headline text-[10px] tracking-widest text-secondary uppercase opacity-70">{role.toUpperCase()}</span>
+            <span className="font-mono text-xs text-on-surface-variant flex items-center gap-1">
+              {account ? abbreviateAddress(account.address) : ""}
+              {copied ? <Check size={10} className="text-secondary" /> : <Copy size={10} className="opacity-40" />}
+            </span>
           </button>
-        )}
+          <button onClick={handleDisconnect} className="p-2 hover:bg-primary/10 transition-colors text-primary">
+            <LogOut size={20} />
+          </button>
+        </div>
+        <button onClick={handleConnect} className={`${account ? "hidden" : "flex"} px-4 py-2 border border-primary/40 text-primary font-headline text-xs tracking-widest hover:bg-primary/10 transition-colors items-center gap-2`}>
+          <Wallet size={16} /> CONNECT
+        </button>
       </div>
     </header>
   );

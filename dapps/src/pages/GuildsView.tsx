@@ -12,7 +12,7 @@ function GuildCard({ vault }: { vault: GuildVaultInfo }) {
             <Shield size={24} className="text-primary opacity-80" />
           </div>
           <span className="font-headline text-[10px] uppercase tracking-widest flex items-center gap-1 font-bold text-secondary">
-            <span className="w-1 h-1 bg-tertiary rounded-full animate-pulse" /> ONLINE
+            <span className="w-1 h-1 bg-secondary rounded-full animate-pulse" /> ONLINE
           </span>
         </div>
         <h2 className="font-headline text-xl font-black text-on-surface tracking-tighter mb-1 uppercase">

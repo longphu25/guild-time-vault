@@ -160,3 +160,9 @@ clean: ## Remove node_modules and build artifacts
 	rm -rf dapps/node_modules dapps/dist
 	rm -rf evevault/apps/extension/chrome-mv3 evevault/apps/extension/.output
 	rm -rf zklogin/node_modules
+
+merge-coin:
+	sui client merge-coin --primary-coin 0x7bcd17cf3516b450dd224436ffd53d3d656fc38aec8ce33b549f0cd016d880e3 --coin-to-merge 0x6954b156cec28fd8c39f7b5e0e1d38fd61d8293672ebe2f845a352ac81c644c4 --gas-budget 10000000 2>&1
+
+pusblish-move:
+	sui client publish move-contracts/guild_time_vault --gas-budget 500000000 --with-unpublished-dependencies --json 2>&1

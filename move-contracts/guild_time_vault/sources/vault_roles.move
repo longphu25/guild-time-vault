@@ -31,7 +31,7 @@ public fun officer_guild_id(cap: &GuildOfficerCap): address { cap.guild_id }
 /// Leader creates a new GuildVault and receives an OfficerCap.
 /// Also creates a Heartbeat for dead-man switch.
 /// Registers the vault in the global VaultRegistry.
-#[allow(lint(self_transfer))]
+#[allow(lint(self_transfer, share_owned))]
 public fun init_guild_vault(
     registry: &mut VaultRegistry,
     guild_id: address,

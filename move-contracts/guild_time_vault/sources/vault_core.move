@@ -183,6 +183,12 @@ public(package) fun destroy_capsule(capsule: Capsule) {
 public fun guild_id(vault: &GuildVault): address { vault.guild_id }
 public fun capsule_count(vault: &GuildVault): u64 { vault.next_capsule_id }
 
+/// Borrow the vault's UID for reading dynamic fields.
+public fun borrow_uid(vault: &GuildVault): &UID { &vault.id }
+
+/// Borrow the vault's UID mutably for adding/removing dynamic fields.
+public(package) fun borrow_uid_mut(vault: &mut GuildVault): &mut UID { &mut vault.id }
+
 public fun has_capsule(vault: &GuildVault, capsule_id: u64): bool {
     vault.capsules.contains(capsule_id)
 }

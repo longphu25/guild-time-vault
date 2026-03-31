@@ -3,6 +3,12 @@ name = "guild_time_vault"
 edition = "2024"
 
 [dependencies]
+world = { local = "../../world-contracts/contracts/world" }
 
 [addresses]
 guild = "0x0"
+
+[environments]
+testnet_internal = "4c78adac"
+testnet_utopia = "4c78adac"
+testnet_stillness = "4c78adac"

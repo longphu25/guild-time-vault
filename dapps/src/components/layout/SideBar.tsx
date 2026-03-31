@@ -1,4 +1,4 @@
-import { Fingerprint, Archive, Hourglass, Shield, Globe } from "lucide-react";
+import { Fingerprint, Archive, Hourglass, Shield, Globe, Box } from "lucide-react";
 import { useLocation, Link } from "react-router";
 import { useVault } from "@/hooks/use-vault";
 import { useQuery } from "@tanstack/react-query";
@@ -38,6 +38,10 @@ export function SideBar() {
               <Archive size={16} />
               <span className="font-headline text-[10px] tracking-tight uppercase">Vaults: {allVaults?.length ?? "..."}</span>
             </div>
+            <Link to="/assembly" className={`px-4 py-3 flex items-center gap-3 transition-colors hover:bg-primary/10 ${location.pathname === "/assembly" ? "bg-primary/20 text-primary border-l-4 border-primary" : "text-on-surface-variant/60"}`}>
+              <Box size={16} />
+              <span className="font-headline text-[10px] tracking-tight uppercase">Smart Assembly</span>
+            </Link>
           </>
         ) : !hasVault ? (
           <div className="px-4 py-6 text-center">

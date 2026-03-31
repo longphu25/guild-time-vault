@@ -83,3 +83,21 @@ export function buildGrantOfficerTx(officerCapId: string, vaultId: string, toAdd
   });
   return tx;
 }
+
+export function buildLinkVaultTx(vaultId: string, officerCapId: string, storageUnitId: string) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: TX.linkVault,
+    arguments: [tx.object(vaultId), tx.object(officerCapId), tx.pure.address(storageUnitId)],
+  });
+  return tx;
+}
+
+export function buildUnlinkVaultTx(vaultId: string, officerCapId: string) {
+  const tx = new Transaction();
+  tx.moveCall({
+    target: TX.unlinkVault,
+    arguments: [tx.object(vaultId), tx.object(officerCapId)],
+  });
+  return tx;
+}

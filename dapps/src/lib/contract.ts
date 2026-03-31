@@ -8,6 +8,7 @@ const MOD = {
   views: "vault_views",
   seal: "vault_seal",
   registry: "vault_registry",
+  extension: "vault_extension",
 } as const;
 
 const target = (module: string, fn: string) =>
@@ -37,6 +38,9 @@ export const TX = {
   sealApproveArchive: target(MOD.seal, "seal_approve_archive"),
   sealApprovePrivateInherit: target(MOD.seal, "seal_approve_private_inherit"),
   sealApproveDeadMan: target(MOD.seal, "seal_approve_dead_man"),
+  // Extension (StorageUnit link)
+  linkVault: target(MOD.extension, "link_vault"),
+  unlinkVault: target(MOD.extension, "unlink_vault"),
 } as const;
 
 export const TYPES = {
@@ -46,6 +50,7 @@ export const TYPES = {
   vault: `${vaultConfig.packageId}::${MOD.core}::GuildVault`,
   heartbeat: `${vaultConfig.packageId}::${MOD.core}::Heartbeat`,
   registry: `${vaultConfig.packageId}::${MOD.core}::VaultRegistry`,
+  vaultAuth: `${vaultConfig.packageId}::${MOD.extension}::VaultAuth`,
 } as const;
 
 export { MOD };

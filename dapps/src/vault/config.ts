@@ -12,6 +12,7 @@ export const VAULT_MODULES = {
     VAULT_HEARTBEAT_API: "vault_heartbeat_api",
     VAULT_VIEWS: "vault_views",
     VAULT_REGISTRY: "vault_registry",
+    VAULT_EXTENSION: "vault_extension",
 } as const;
 
 export const CAPSULE_MODES = {

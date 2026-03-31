@@ -22,5 +22,6 @@
     "**/bun.lock": true,
     "move-contracts/**/build": true,
     "deployments/**": true
-  }
+  },
+  "typescript.autoClosingTags": false
 }

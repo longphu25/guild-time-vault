@@ -1,5 +1,6 @@
 .PHONY: help install install-all dapp-install zklogin-install \
        dev dapp-dev dapp-build dapp-preview \
+       ext-install ext-dev ext-build ext-clean \
        docker-up docker-up-indexer docker-down docker-shell docker-local \
        fmt fmt-ts fmt-check lint \
        build-move publish-move \
@@ -26,7 +27,7 @@ dapp-install: ## Install dApp dependencies
 zklogin-install: ## Install zkLogin dependencies
 	cd zklogin && bun install
 
-install-all: init-submodules install dapp-install zklogin-install ## Install all dependencies
+install-all: init-submodules install dapp-install ext-install zklogin-install ## Install all dependencies
 
 # ─── Development ────────────────────────────────────────
 dev: install ## Start dApp dev server
@@ -40,6 +41,19 @@ dapp-build: ## Build dApp for production
 
 dapp-preview: ## Preview dApp production build
 	cd dapps && bun run preview
+
+# ─── Chrome Extension (EVE Vault) ──────────────────────
+ext-install: ## Install extension dependencies
+	cd evevault && bun install
+
+ext-dev: ## Start extension dev mode (hot reload)
+	cd evevault/apps/extension && bun run dev
+
+ext-build: ext-install ## Build Chrome extension for production
+	cd evevault/apps/extension && bun run build
+
+ext-clean: ## Remove extension build output
+	rm -rf evevault/apps/extension/chrome-mv3 evevault/apps/extension/.output
 
 # ─── Docker ─────────────────────────────────────────────
 docker-up: ## Start Sui dev container (localnet)
@@ -144,4 +158,5 @@ zklogin: zklogin-install ## Run zkLogin CLI
 clean: ## Remove node_modules and build artifacts
 	rm -rf node_modules dist
 	rm -rf dapps/node_modules dapps/dist
+	rm -rf evevault/apps/extension/chrome-mv3 evevault/apps/extension/.output
 	rm -rf zklogin/node_modules

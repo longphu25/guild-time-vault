@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { useNavigate } from "react-router";
 import { Rocket, Globe, Lock, Calendar, Heart } from "lucide-react";
 import { toast } from "sonner";
@@ -9,6 +9,7 @@ import { CAPSULE_MODE } from "@/lib/contract";
 import { useVault } from "@/hooks/use-vault";
 import { sealEncrypt } from "@/lib/seal-client";
 import { walrusUpload } from "@/lib/walrus-client";
+import { ProgressModal, type ProgressStep } from "@/components/ProgressModal";
 
 const MODES = [
   { value: CAPSULE_MODE.ARCHIVE, label: "Guild Archive", icon: Globe, desc: "All guild members can read after unlock" },
@@ -29,10 +30,19 @@ export function CreateCapsule() {
   const [beneficiary, setBeneficiary] = useState("");
   const [storageDays, setStorageDays] = useState("30");
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [progress, setProgress] = useState("");
+
+  // Progress modal state
+  const [modalOpen, setModalOpen] = useState(false);
+  const [modalFinished, setModalFinished] = useState(false);
+  const [modalError, setModalError] = useState("");
+  const [steps, setSteps] = useState<ProgressStep[]>([]);
 
   const maxChars = 500;
   const daysUntil = unlockDate ? Math.ceil((new Date(unlockDate).getTime() - Date.now()) / 864e5) : null;
+
+  const advanceStep = useCallback((id: number, status: ProgressStep["status"]) => {
+    setSteps((prev) => prev.map((s) => s.id === id ? { ...s, status } : s));
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -46,41 +56,65 @@ export function CreateCapsule() {
       return toast.error(`Storage duration (${storageDaysNum}d) must be ≥ unlock time (${daysUntil}d)`);
     if (!capId) return toast.error("No member/officer capability found. Ask an officer to grant you access.");
 
+    const initialSteps: ProgressStep[] = [
+      { id: 1, label: "Seal encrypt payload", status: "loading" },
+      { id: 2, label: "Swap SUI → WAL (if needed)", status: "pending" },
+      { id: 3, label: "Register blob — approve tx", status: "pending" },
+      { id: 4, label: "Upload to storage nodes", status: "pending" },
+      { id: 5, label: "Certify blob — approve tx", status: "pending" },
+      { id: 6, label: "Create capsule — approve tx", status: "pending" },
+    ];
+    setSteps(initialSteps);
+    setModalOpen(true);
+    setModalFinished(false);
+    setModalError("");
     setIsSubmitting(true);
+
     try {
       const unlockTimeMs = new Date(unlockDate).getTime();
       const plaintext = new TextEncoder().encode(message);
       const benefAddr = mode === CAPSULE_MODE.PRIVATE_INHERIT ? beneficiary : "0x0000000000000000000000000000000000000000000000000000000000000000";
-
-      // Predict capsule_id (next_capsule_id from vault)
       const capsuleId = vault?.next_capsule_id ?? 0;
       const guildId = vault?.guild_id ?? account!.address;
-
-      // Context address depends on mode
       const contextAddr = mode === CAPSULE_MODE.ARCHIVE ? guildId
         : mode === CAPSULE_MODE.PRIVATE_INHERIT ? benefAddr
-        : vaultId ?? ""; // DEAD_MAN uses vault_id
+        : vaultId ?? "";
 
       // Step 1: Seal encrypt
-      setProgress("Encrypting with Seal...");
       const encryptedData = await sealEncrypt(plaintext, mode, capsuleId, contextAddr);
+      advanceStep(1, "completed");
 
-      // Step 2: Walrus upload (auto-swaps SUI→WAL if needed)
+      // Steps 2-5: Walrus upload
+      let swapNeeded = false;
       const { blobId } = await walrusUpload(
         encryptedData,
         account!.address,
         signAndExecuteTransaction,
         {
           epochs: parseInt(storageDays) || 5,
-          onProgress: (p) => setProgress(p.detail ?? p.step),
+          onProgress: (p) => {
+            if (p.step === "checking") { advanceStep(2, "loading"); }
+            else if (p.step === "swapping") { swapNeeded = true; advanceStep(2, "loading"); }
+            else if (p.step === "registering") {
+              advanceStep(2, swapNeeded ? "completed" : "completed");
+              setSteps((prev) => prev.map((s) => s.id === 2 ? { ...s, label: swapNeeded ? "Swap SUI → WAL" : "WAL balance OK — skip swap", status: "completed" } : s));
+              advanceStep(3, "loading");
+            }
+            else if (p.step === "uploading") { advanceStep(3, "completed"); advanceStep(4, "loading"); }
+            else if (p.step === "certifying") { advanceStep(4, "completed"); advanceStep(5, "loading"); }
+          },
         },
       );
-      const blobIdBytes = Array.from(new TextEncoder().encode(blobId));
+      advanceStep(2, "completed");
+      advanceStep(3, "completed");
+      advanceStep(4, "completed");
+      advanceStep(5, "completed");
+      advanceStep(6, "loading");
 
-      // Step 3: On-chain create_capsule
-      setProgress("Submitting transaction...");
+      const blobIdBytes = Array.from(new TextEncoder().encode(blobId));
       const sealPolicyBytes = Array.from(new TextEncoder().encode(JSON.stringify({ mode, capsuleId, contextAddr })));
 
+      // Step 6: On-chain create_capsule
       const tx = buildCreateCapsuleTx({
         vaultId: vaultId!,
         capId: capId,
@@ -91,27 +125,31 @@ export function CreateCapsule() {
         walrusBlobId: blobIdBytes,
         sealPolicyId: sealPolicyBytes,
       });
-
       await signAndExecuteTransaction({ transaction: tx });
-      toast.success("Capsule launched into the stars!");
+      advanceStep(6, "completed");
+
+      setModalFinished(true);
       refetch();
-      setTimeout(() => navigate("/vault"), 1500);
-    } catch (err: any) {
-      const msg = err.message ?? "Transaction failed";
-      if (msg.includes("rejected") || msg.includes("denied") || msg.includes("cancel")) {
-        toast.error("Transaction cancelled");
-      } else {
-        toast.error(msg);
-      }
+    } catch (err: unknown) {
+      const msg = err instanceof Error ? err.message : "Transaction failed";
+      const cancelled = msg.includes("rejected") || msg.includes("denied") || msg.includes("cancel");
+      // Mark current loading step as error
+      setSteps((prev) => prev.map((s) => s.status === "loading" ? { ...s, status: "error" } : s));
+      setModalError(cancelled ? "Transaction cancelled by user" : msg);
     } finally {
       setIsSubmitting(false);
-      setProgress("");
     }
+  };
+
+  const closeModal = () => {
+    setModalOpen(false);
+    if (modalFinished) navigate("/vault");
   };
 
   return (
     <WalletGate message="You need to connect your wallet to create a time capsule.">
-      <div className="min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8">
+      <ProgressModal isOpen={modalOpen} steps={steps} onClose={closeModal} isFinished={modalFinished} error={modalError} />
+      <div className={`min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8 ${modalOpen ? "pointer-events-none select-none" : ""}`}>
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
             <h1 className="text-4xl font-heading text-[#ffffd6] mb-3">Create Time Capsule</h1>
@@ -173,7 +211,7 @@ export function CreateCapsule() {
 
             <button type="submit" disabled={isSubmitting}
               className="w-full px-6 py-4 bg-gradient-to-r from-[#c64f05] to-[#dd5807] text-[#130904] rounded-lg hover:drop-shadow-[0_0_20px_rgba(198,79,5,0.8)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {isSubmitting ? (<><div className="w-5 h-5 border-2 border-[#130904] border-t-transparent rounded-full animate-spin" /> {progress || "Launching..."}</>) : (<><Rocket className="w-5 h-5" /> Launch Capsule</>)}
+              <Rocket className="w-5 h-5" /> {isSubmitting ? "Deploying..." : "Launch Capsule"}
             </button>
           </form>
         </div>

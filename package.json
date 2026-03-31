@@ -25,7 +25,8 @@
   "dependencies": {
     "@mysten/sui": "^2.0.0",
     "@noble/hashes": "^1.8.0",
-    "dotenv": "^17.2.3"
+    "dotenv": "^17.2.3",
+    "gsap": "^3.14.2"
   },
   "devDependencies": {
     "@mysten/prettier-plugin-move": "^0.3.5",

@@ -20,7 +20,8 @@
     "vault:create-capsule": "bun ts-scripts/guild_time_vault/create-capsule.ts",
     "vault:claim-capsule": "bun ts-scripts/guild_time_vault/claim-capsule.ts",
     "vault:heartbeat": "bun ts-scripts/guild_time_vault/heartbeat.ts",
-    "vault:delete-capsule": "bun ts-scripts/guild_time_vault/delete-capsule.ts"
+    "vault:delete-capsule": "bun ts-scripts/guild_time_vault/delete-capsule.ts",
+    "vault:list": "bun ts-scripts/guild_time_vault/list-vaults.ts"
   },
   "dependencies": {
     "@mysten/sui": "^2.0.0",

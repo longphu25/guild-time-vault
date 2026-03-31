@@ -1,0 +1,76 @@
+import { Fingerprint, Archive, Hourglass, Shield, Globe } from "lucide-react";
+import { useLocation, Link } from "react-router";
+import { useVault } from "@/hooks/use-vault";
+import { useQuery } from "@tanstack/react-query";
+import { fetchAllVaults } from "@/lib/vault-reader";
+
+export function SideBar() {
+  const location = useLocation();
+  const { vault, vaultId, capsules, heartbeat} = useVault();
+  const { data: allVaults } = useQuery({ queryKey: ["allVaults"], queryFn: fetchAllVaults, staleTime: 60_000 });
+
+  const now = Date.now();
+  const isGuildPage = location.pathname === "/" || location.pathname === "/init-vault";
+  const hasVault = !!vault || !!vaultId;
+
+  return (
+    <aside className="fixed left-0 top-16 h-[calc(100vh-64px)] w-64 border-r border-primary/10 bg-surface/90 backdrop-blur-lg hidden md:flex flex-col py-8 z-40">
+      <div className="px-6 mb-8">
+        <div className="flex items-center gap-3 mb-2">
+          <div className="w-10 h-10 border border-primary/30 flex items-center justify-center bg-surface-low">
+            <Shield size={24} className="text-primary opacity-80" />
+          </div>
+          <div>
+            <div className="font-headline font-bold text-sm tracking-tight">{isGuildPage ? "FRONTIER" : "GUILD_VAULT"}</div>
+            <div className="font-headline text-[10px] text-on-surface-variant opacity-60 uppercase">EVE Frontier</div>
+          </div>
+        </div>
+      </div>
+
+      <nav className="flex-1 space-y-1">
+        {isGuildPage ? (
+          <>
+            <div className="bg-primary/20 text-primary border-l-4 border-primary px-4 py-3 flex items-center gap-3">
+              <Globe size={16} />
+              <span className="font-headline text-[10px] tracking-tight uppercase">Network: Testnet</span>
+            </div>
+            <div className="text-on-surface-variant/60 px-4 py-3 flex items-center gap-3">
+              <Archive size={16} />
+              <span className="font-headline text-[10px] tracking-tight uppercase">Vaults: {allVaults?.length ?? "..."}</span>
+            </div>
+          </>
+        ) : !hasVault ? (
+          <div className="px-4 py-6 text-center">
+            <div className="text-on-surface-variant/40 font-headline text-[10px] uppercase tracking-widest mb-3">No vault selected</div>
+            <Link to="/" className="text-primary font-headline text-[10px] uppercase tracking-widest hover:underline">← Select a guild</Link>
+          </div>
+        ) : (
+          <>
+            <div className="bg-primary/20 text-primary border-l-4 border-primary px-4 py-3 flex items-center gap-3">
+              <Fingerprint size={16} />
+              <span className="font-headline text-[10px] tracking-tight uppercase">
+                Guild: {vault ? `${vault.guild_id.slice(0, 8)}...` : "..."}
+              </span>
+            </div>
+            <div className="text-on-surface-variant/60 px-4 py-3 flex items-center gap-3">
+              <Archive size={16} />
+              <span className="font-headline text-[10px] tracking-tight uppercase">Capsules: {capsules.length}</span>
+            </div>
+            <div className="text-on-surface-variant/60 px-4 py-3 flex items-center gap-3">
+              <Hourglass size={16} />
+              <span className="font-headline text-[10px] tracking-tight uppercase">
+                Next Pulse: {heartbeat ? `${Math.max(0, Math.ceil((heartbeat.last_ping_ms + heartbeat.timeout_ms - now) / 36e5))}h` : "—"}
+              </span>
+            </div>
+          </>
+        )}
+      </nav>
+
+      <div className="px-6 mt-auto">
+        <div className="flex flex-col gap-2 pt-4 border-t border-primary/10">
+          <div className="text-[9px] font-headline text-on-surface-variant/40 uppercase">Vault v2 • Testnet</div>
+        </div>
+      </div>
+    </aside>
+  );
+}

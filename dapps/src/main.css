@@ -1,112 +1,67 @@
+@import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700;900&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
 @custom-variant dark (&:is(.dark *));
 
-:root {
-  --background: #0A0A0F;
-  --foreground: #E2E8F0;
-  --card: rgba(26, 26, 46, 0.8);
-  --card-foreground: #E2E8F0;
-  --popover: #1A1A2E;
-  --popover-foreground: #E2E8F0;
-  --primary: #00F0FF;
-  --primary-foreground: #0A0A0F;
-  --secondary: #A855F7;
-  --secondary-foreground: #E2E8F0;
-  --muted: #2D2D3F;
-  --muted-foreground: #94A3B8;
-  --accent: #F59E0B;
-  --accent-foreground: #0A0A0F;
-  --destructive: #EF4444;
-  --destructive-foreground: #ffffff;
-  --border: #2D2D3F;
-  --input: rgba(26, 26, 46, 0.5);
-  --ring: #00F0FF;
-  --radius: 0.5rem;
-  --sidebar: #0D1117;
-  --sidebar-foreground: #E2E8F0;
-  --sidebar-primary: #00F0FF;
-  --sidebar-primary-foreground: #0A0A0F;
-  --sidebar-accent: #1A1A2E;
-  --sidebar-accent-foreground: #E2E8F0;
-  --sidebar-border: #2D2D3F;
-  --sidebar-ring: #00F0FF;
-}
+@theme {
+  --font-headline: "Space Grotesk", sans-serif;
+  --font-body: "Space Grotesk", sans-serif;
+  --font-mono: "JetBrains Mono", monospace;
 
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --font-heading: 'Orbitron', sans-serif;
-  --font-sans: 'Inter', sans-serif;
-  --font-mono: 'JetBrains Mono', monospace;
+  /* EVE Frontier palette */
+  --color-primary: #c64f05;
+  --color-primary-bright: #dd5807;
+  --color-secondary: #5ee39c;
+  --color-tertiary: #0c27d8;
+  --color-background: #130904;
+  --color-surface: #181716;
+  --color-surface-low: #2b2827;
+  --color-surface-high: #3c3836;
+  --color-surface-highest: #524e4b;
+  --color-on-surface: #ffffd6;
+  --color-on-surface-variant: #8e8c77;
+  --color-error: #942922;
+  --color-border: rgba(198, 79, 5, 0.15);
+  --color-ring: #c64f05;
+  --radius-sm: 0px;
+  --radius-md: 0px;
+  --radius-lg: 0px;
+  --radius-xl: 0px;
 }
 
 @layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
   body {
-    @apply bg-background text-foreground font-sans;
+    @apply bg-background text-on-surface font-body selection:bg-primary/30 selection:text-primary;
     margin: 0;
   }
 }
 
 @layer utilities {
-  .glow-cyan {
-    box-shadow: 0 0 10px rgba(0, 240, 255, 0.5);
+  .scanline {
+    background: linear-gradient(to bottom, transparent 50%, rgba(198, 79, 5, 0.03) 50%);
+    background-size: 100% 4px;
+    pointer-events: none;
   }
-  .glow-cyan-strong {
-    box-shadow: 0 0 20px rgba(0, 240, 255, 0.8);
+  .glass-panel {
+    background: linear-gradient(135deg, rgba(198, 79, 5, 0.04) 0%, rgba(43, 40, 39, 0.4) 100%);
+    backdrop-filter: blur(12px);
   }
-  .glow-purple {
-    box-shadow: 0 0 10px rgba(168, 85, 247, 0.5);
+  .corner-bracket { position: relative; }
+  .corner-bracket::before {
+    content: ''; position: absolute; top: 0; left: 0;
+    width: 12px; height: 12px;
+    border-top: 2px solid var(--color-primary); border-left: 2px solid var(--color-primary);
   }
-  .glow-amber {
-    box-shadow: 0 0 10px rgba(245, 158, 11, 0.5);
-  }
-  .text-glow-cyan {
-    text-shadow: 0 0 10px rgba(0, 240, 255, 0.8);
-  }
-  .text-glow-amber {
-    text-shadow: 0 0 10px rgba(245, 158, 11, 0.8);
-  }
-  .font-heading {
-    font-family: 'Orbitron', sans-serif;
+  .corner-bracket::after {
+    content: ''; position: absolute; bottom: 0; right: 0;
+    width: 12px; height: 12px;
+    border-bottom: 2px solid var(--color-primary); border-right: 2px solid var(--color-primary);
   }
 }
 
-::-webkit-scrollbar { width: 8px; height: 8px; }
-::-webkit-scrollbar-track { background: #0A0A0F; }
-::-webkit-scrollbar-thumb { background: #2D2D3F; border-radius: 4px; }
-::-webkit-scrollbar-thumb:hover { background: #00F0FF; }
+::-webkit-scrollbar { width: 6px; height: 6px; }
+::-webkit-scrollbar-track { background: #130904; }
+::-webkit-scrollbar-thumb { background: #3c3836; }
+::-webkit-scrollbar-thumb:hover { background: #c64f05; }

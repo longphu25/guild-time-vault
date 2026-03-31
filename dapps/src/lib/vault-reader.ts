@@ -4,12 +4,10 @@ import { TYPES } from "./contract";
 
 const GQL = "https://graphql.testnet.sui.io/graphql";
 
-const client = new SuiGrpcClient({
+export const client = new SuiGrpcClient({
   network: "testnet",
   baseUrl: "https://fullnode.testnet.sui.io:443",
 });
-
-export { client };
 
 // ── Types ──
 
@@ -40,40 +38,53 @@ export interface HeartbeatData {
   timeout_ms: number;
 }
 
+export interface GuildVaultInfo {
+  vaultId: string;
+  guildId: string;
+  creator: string;
+  createdAt: number;
+  capsuleCount: number;
+}
+
+export interface GuildMember {
+  address: string;
+  role: "member" | "officer";
+  capId: string;
+  guildId: string;
+}
+
+export type UserRole = "leader" | "officer" | "member" | "guest";
+
+export interface UserVaultObjects {
+  role: UserRole;
+  capId?: string;
+  memberCapId?: string;
+  officerCapId?: string;
+  heartbeatId?: string;
+  heartbeatVaultId?: string;
+}
+
 // ── Helpers ──
 
-/** Decode base64 string to byte array (for walrus_blob_id / seal_policy_id) */
 function b64ToBytes(b64: string): number[] {
-  try {
-    return Array.from(atob(b64), (c) => c.charCodeAt(0));
-  } catch {
-    return [];
-  }
+  try { return Array.from(atob(b64), (c) => c.charCodeAt(0)); } catch { return []; }
 }
 
 // ── Read functions ──
 
-export async function fetchVault(): Promise<VaultData | null> {
-  const res = await client.getObject({ objectId: vaultConfig.vaultObjectId, include: { json: true } });
+export async function fetchVault(vaultId: string): Promise<VaultData | null> {
+  const res = await client.getObject({ objectId: vaultId, include: { json: true } });
   const json = res.object?.json as Record<string, any> | undefined;
   if (!json) return null;
   return {
-    id: vaultConfig.vaultObjectId,
+    id: vaultId,
     guild_id: json.guild_id,
     next_capsule_id: Number(json.next_capsule_id),
     capsules_table_id: json.capsules?.id ?? "",
   };
 }
 
-export async function fetchHeartbeat(): Promise<HeartbeatData | null> {
-  // Heartbeat is auto-detected per-user via detectUserRole / findOwnedHeartbeat
-  // This function is kept for backward compat but returns null without a known ID
-  return null;
-}
-
-/** Fetch heartbeat by object ID. */
-export async function fetchHeartbeatById(heartbeatId: string): Promise<HeartbeatData | null> {
-  if (!heartbeatId) return null;
+export async function fetchHeartbeat(heartbeatId: string): Promise<HeartbeatData | null> {
   const res = await client.getObject({ objectId: heartbeatId, include: { json: true } });
   const json = res.object?.json as Record<string, any> | undefined;
   if (!json) return null;
@@ -85,14 +96,8 @@ export async function fetchHeartbeatById(heartbeatId: string): Promise<Heartbeat
   };
 }
 
-/** Find Heartbeat object owned by address. */
-export async function findOwnedHeartbeat(address: string): Promise<string | null> {
-  const res = await client.listOwnedObjects({ owner: address, type: TYPES.heartbeat, limit: 1 });
-  return res.objects?.length > 0 ? res.objects[0].objectId : null;
-}
-
-export async function fetchCapsules(): Promise<CapsuleData[]> {
-  const vault = await fetchVault();
+export async function fetchCapsules(vaultId: string): Promise<CapsuleData[]> {
+  const vault = await fetchVault(vaultId);
   if (!vault?.capsules_table_id) return [];
 
   const dyn = await client.listDynamicFields({ parentId: vault.capsules_table_id });
@@ -122,54 +127,146 @@ export async function fetchCapsules(): Promise<CapsuleData[]> {
   return capsules.sort((a, b) => a.unlock_time_ms - b.unlock_time_ms);
 }
 
-export type UserRole = "leader" | "officer" | "member" | "guest";
-
-export async function detectUserRole(address: string): Promise<{ role: UserRole; capId?: string; memberCapId?: string; officerCapId?: string }> {
+/** Auto-detect user's owned vault objects (OfficerCap, MemberCap, Heartbeat) */
+export async function detectUserVaultObjects(address: string): Promise<UserVaultObjects> {
   let officerCapId: string | undefined;
   let memberCapId: string | undefined;
+  let heartbeatId: string | undefined;
+  let heartbeatVaultId: string | undefined;
 
-  const officerRes = await client.listOwnedObjects({ owner: address, type: TYPES.officerCap, limit: 1 });
-  if (officerRes.objects?.length > 0) officerCapId = officerRes.objects[0].objectId;
+  const officerRes = await client.listOwnedObjects({ owner: address, type: TYPES.officerCap, limit: 1, include: { json: true } });
+  if (officerRes.objects?.length > 0) {
+    officerCapId = officerRes.objects[0].objectId;
+  }
 
   const memberRes = await client.listOwnedObjects({ owner: address, type: TYPES.memberCap, limit: 1 });
-  if (memberRes.objects?.length > 0) memberCapId = memberRes.objects[0].objectId;
+  if (memberRes.objects?.length > 0) {
+    memberCapId = memberRes.objects[0].objectId;
+  }
+
+  const hbRes = await client.listOwnedObjects({ owner: address, type: TYPES.heartbeat, limit: 1, include: { json: true } });
+  if (hbRes.objects?.length > 0) {
+    heartbeatId = hbRes.objects[0].objectId;
+    heartbeatVaultId = (hbRes.objects[0] as any).json?.vault_id;
+  }
 
   const role: UserRole = officerCapId ? "officer" : memberCapId ? "member" : "guest";
-  return { role, capId: officerCapId ?? memberCapId, memberCapId, officerCapId };
+  return { role, capId: officerCapId ?? memberCapId, memberCapId, officerCapId, heartbeatId, heartbeatVaultId };
 }
 
-export interface GuildMember {
-  address: string;
-  role: "member" | "officer";
-  capId: string;
-  guildId: string;
-}
+/** Fetch all vaults — from VaultRegistry if populated, fallback GraphQL */
+export async function fetchAllVaults(): Promise<GuildVaultInfo[]> {
+  // Try registry first
+  try {
+    const registryId = vaultConfig.registryId;
+    if (registryId) {
+      const res = await client.getObject({ objectId: registryId, include: { json: true } });
+      const json = res.object?.json as Record<string, any> | undefined;
+      const vaultAddrs: string[] = json?.vault_list ?? [];
+      const entriesTableId: string = json?.entries?.id ?? "";
 
-async function queryCapsByType(type: string): Promise<GuildMember[]> {
-  const role = type.includes("Officer") ? "officer" as const : "member" as const;
+      if (vaultAddrs.length > 0 && entriesTableId) {
+        const vaults: GuildVaultInfo[] = [];
+        for (const addr of vaultAddrs) {
+          try {
+            const vaultRes = await client.getObject({ objectId: addr, include: { json: true } });
+            const vj = vaultRes.object?.json as Record<string, any> | undefined;
+            // Read entry from table via dynamic field
+            let creator = "", createdAt = 0;
+            try {
+              const dyn = await client.listDynamicFields({ parentId: entriesTableId });
+              for (const f of dyn.dynamicFields ?? []) {
+                const obj = await client.getObject({ objectId: f.fieldId, include: { json: true } });
+                const entry = (obj.object?.json as any)?.value;
+                if (entry?.vault_addr === addr) {
+                  creator = entry.creator ?? "";
+                  createdAt = Number(entry.created_at_ms ?? 0);
+                  break;
+                }
+              }
+            } catch { /* skip */ }
+            vaults.push({
+              vaultId: addr,
+              guildId: vj?.guild_id ?? "",
+              creator,
+              createdAt,
+              capsuleCount: Number(vj?.capsules?.size ?? 0),
+            });
+          } catch { /* skip */ }
+        }
+        return vaults;
+      }
+    }
+  } catch { /* fallback */ }
+
+  // Fallback: GraphQL
+  const type = `${vaultConfig.packageId}::vault_core::GuildVault`;
   const res = await fetch(GQL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
-      query: `{ objects(filter: { type: "${type}" }) { nodes { address owner { ... on AddressOwner { address { address } } } asMoveObject { contents { json } } } } }`,
+      query: `{ objects(filter: { type: "${type}" }) { nodes { address asMoveObject { contents { json } } } } }`,
     }),
   });
   const json = await res.json();
   return (json.data?.objects?.nodes ?? []).map((n: any) => ({
-    address: n.owner?.address?.address ?? "",
-    role,
-    capId: n.address,
+    vaultId: n.address,
     guildId: n.asMoveObject?.contents?.json?.guild_id ?? "",
+    creator: "",
+    createdAt: 0,
+    capsuleCount: Number(n.asMoveObject?.contents?.json?.capsules?.size ?? 0),
   }));
 }
 
-export async function fetchGuildMembers(): Promise<GuildMember[]> {
+/** Fetch heartbeat by vault ID via GraphQL (public, no ownership needed) */
+export async function fetchHeartbeatByVaultId(vaultId: string): Promise<HeartbeatData | null> {
+  const type = `${vaultConfig.packageId}::vault_core::Heartbeat`;
+  const res = await fetch(GQL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      query: `{ objects(filter: { type: "${type}" }) { nodes { address asMoveObject { contents { json } } } } }`,
+    }),
+  });
+  const json = await res.json();
+  const nodes = json.data?.objects?.nodes ?? [];
+  for (const n of nodes) {
+    const hb = n.asMoveObject?.contents?.json;
+    if (hb?.vault_id === vaultId) {
+      return {
+        id: n.address,
+        vault_id: hb.vault_id,
+        last_ping_ms: Number(hb.last_ping_ms),
+        timeout_ms: Number(hb.timeout_ms),
+      };
+    }
+  }
+  return null;
+}
+
+/** Fetch guild members via GraphQL */
+export async function fetchGuildMembers(guildId: string): Promise<GuildMember[]> {
+  async function queryCapsByType(type: string): Promise<GuildMember[]> {
+    const r = type.includes("Officer") ? "officer" as const : "member" as const;
+    const res = await fetch(GQL, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        query: `{ objects(filter: { type: "${type}" }) { nodes { address owner { ... on AddressOwner { address { address } } } asMoveObject { contents { json } } } } }`,
+      }),
+    });
+    const json = await res.json();
+    return (json.data?.objects?.nodes ?? []).map((n: any) => ({
+      address: n.owner?.address?.address ?? "",
+      role: r,
+      capId: n.address,
+      guildId: n.asMoveObject?.contents?.json?.guild_id ?? "",
+    }));
+  }
+
   const [members, officers] = await Promise.all([
     queryCapsByType(TYPES.memberCap),
     queryCapsByType(TYPES.officerCap),
   ]);
-  // Filter by current vault's guild_id
-  const vaultData = await fetchVault();
-  const guildId = vaultData?.guild_id ?? "";
   return [...officers, ...members].filter((m) => m.guildId === guildId);
 }

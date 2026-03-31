@@ -21,7 +21,7 @@ export function CreateCapsule() {
   const dAppKit = useDAppKit();
   const { signAndExecuteTransaction } = dAppKit;
   const account = useCurrentAccount();
-  const { role, capId, vault, refetch } = useVault();
+  const { role, capId, vault, vaultId, refetch } = useVault();
 
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
@@ -57,10 +57,9 @@ export function CreateCapsule() {
       const guildId = vault?.guild_id ?? account!.address;
 
       // Context address depends on mode
-      const { vaultConfig } = await import("@/lib/vault-config");
       const contextAddr = mode === CAPSULE_MODE.ARCHIVE ? guildId
         : mode === CAPSULE_MODE.PRIVATE_INHERIT ? benefAddr
-        : vaultConfig.vaultObjectId; // DEAD_MAN uses vault_id
+        : vaultId ?? ""; // DEAD_MAN uses vault_id
 
       // Step 1: Seal encrypt
       setProgress("Encrypting with Seal...");
@@ -83,6 +82,7 @@ export function CreateCapsule() {
       const sealPolicyBytes = Array.from(new TextEncoder().encode(JSON.stringify({ mode, capsuleId, contextAddr })));
 
       const tx = buildCreateCapsuleTx({
+        vaultId: vaultId!,
         capId: capId,
         role: role === "officer" ? "officer" : "member",
         mode,
@@ -95,7 +95,7 @@ export function CreateCapsule() {
       await signAndExecuteTransaction({ transaction: tx });
       toast.success("Capsule launched into the stars!");
       refetch();
-      setTimeout(() => navigate("/my-capsules"), 1500);
+      setTimeout(() => navigate("/vault"), 1500);
     } catch (err: any) {
       const msg = err.message ?? "Transaction failed";
       if (msg.includes("rejected") || msg.includes("denied") || msg.includes("cancel")) {
@@ -114,24 +114,24 @@ export function CreateCapsule() {
       <div className="min-h-[80vh] py-12 px-4 sm:px-6 lg:px-8">
         <div className="max-w-2xl mx-auto">
           <div className="text-center mb-8">
-            <h1 className="text-4xl font-heading text-[#E2E8F0] mb-3">Create Time Capsule</h1>
-            <p className="text-[#94A3B8]">Send a message to the future</p>
+            <h1 className="text-4xl font-heading text-[#ffffd6] mb-3">Create Time Capsule</h1>
+            <p className="text-[#8e8c77]">Send a message to the future</p>
             {role !== "guest" && (
-              <p className="text-xs text-[#00F0FF] mt-2">Role: {role.toUpperCase()}</p>
+              <p className="text-xs text-[#c64f05] mt-2">Role: {role.toUpperCase()}</p>
             )}
           </div>
 
           <form onSubmit={handleSubmit} className="space-y-6">
             {/* Mode selector */}
             <div>
-              <label className="block text-[#E2E8F0] mb-3">Capsule Mode</label>
+              <label className="block text-[#ffffd6] mb-3">Capsule Mode</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {MODES.map((m) => (
                   <button key={m.value} type="button" onClick={() => setMode(m.value)}
-                    className={`p-4 rounded-lg border text-left transition-all ${mode === m.value ? "border-[#00F0FF] bg-[#00F0FF]/10" : "border-[#2D2D3F] bg-[#1A1A2E]/50 hover:border-[#00F0FF]/30"}`}>
-                    <m.icon className={`w-5 h-5 mb-2 ${mode === m.value ? "text-[#00F0FF]" : "text-[#94A3B8]"}`} />
-                    <div className={`text-sm font-medium ${mode === m.value ? "text-[#00F0FF]" : "text-[#E2E8F0]"}`}>{m.label}</div>
-                    <div className="text-xs text-[#94A3B8] mt-1">{m.desc}</div>
+                    className={`p-4 rounded-lg border text-left transition-all ${mode === m.value ? "border-[#c64f05] bg-[#c64f05]/10" : "border-[#3c3836] bg-[#2b2827]/50 hover:border-[#c64f05]/30"}`}>
+                    <m.icon className={`w-5 h-5 mb-2 ${mode === m.value ? "text-[#c64f05]" : "text-[#8e8c77]"}`} />
+                    <div className={`text-sm font-medium ${mode === m.value ? "text-[#c64f05]" : "text-[#ffffd6]"}`}>{m.label}</div>
+                    <div className="text-xs text-[#8e8c77] mt-1">{m.desc}</div>
                   </button>
                 ))}
               </div>
@@ -139,41 +139,41 @@ export function CreateCapsule() {
 
             {/* Message */}
             <div>
-              <label className="block text-[#E2E8F0] mb-2">Your Message</label>
+              <label className="block text-[#ffffd6] mb-2">Your Message</label>
               <textarea value={message} onChange={(e) => setMessage(e.target.value.slice(0, maxChars))} placeholder="Write something that matters..."
-                className="w-full h-32 px-4 py-3 bg-[#1A1A2E]/50 border border-[#2D2D3F] rounded-lg text-[#E2E8F0] placeholder-[#94A3B8]/50 focus:border-[#00F0FF] focus:outline-none focus:ring-1 focus:ring-[#00F0FF] transition-all resize-none" maxLength={maxChars} />
-              <div className={`text-right text-sm mt-1 ${message.length > maxChars * 0.9 ? "text-[#EF4444]" : "text-[#94A3B8]"}`}>{message.length} / {maxChars}</div>
+                className="w-full h-32 px-4 py-3 bg-[#2b2827]/50 border border-[#3c3836] rounded-lg text-[#ffffd6] placeholder-[#8e8c77]/50 focus:border-[#c64f05] focus:outline-none focus:ring-1 focus:ring-[#c64f05] transition-all resize-none" maxLength={maxChars} />
+              <div className={`text-right text-sm mt-1 ${message.length > maxChars * 0.9 ? "text-[#EF4444]" : "text-[#8e8c77]"}`}>{message.length} / {maxChars}</div>
             </div>
 
             {/* Unlock Date */}
             <div>
-              <label className="block text-[#E2E8F0] mb-2 flex items-center gap-2"><Calendar className="w-4 h-4" /> Unlock Date</label>
+              <label className="block text-[#ffffd6] mb-2 flex items-center gap-2"><Calendar className="w-4 h-4" /> Unlock Date</label>
               <input type="datetime-local" value={unlockDate} onChange={(e) => setUnlockDate(e.target.value)}
-                className="w-full px-4 py-3 bg-[#1A1A2E]/50 border border-[#2D2D3F] rounded-lg text-[#E2E8F0] focus:border-[#00F0FF] focus:outline-none focus:ring-1 focus:ring-[#00F0FF] transition-all" />
-              {daysUntil !== null && daysUntil > 0 && <div className="text-sm text-[#00F0FF] mt-2">Unlocks in {daysUntil} day{daysUntil !== 1 ? "s" : ""}</div>}
+                className="w-full px-4 py-3 bg-[#2b2827]/50 border border-[#3c3836] rounded-lg text-[#ffffd6] focus:border-[#c64f05] focus:outline-none focus:ring-1 focus:ring-[#c64f05] transition-all" />
+              {daysUntil !== null && daysUntil > 0 && <div className="text-sm text-[#c64f05] mt-2">Unlocks in {daysUntil} day{daysUntil !== 1 ? "s" : ""}</div>}
             </div>
 
             {/* Beneficiary (for PRIVATE_INHERIT) */}
             {mode === CAPSULE_MODE.PRIVATE_INHERIT && (
               <div>
-                <label className="block text-[#E2E8F0] mb-2">Beneficiary Address</label>
+                <label className="block text-[#ffffd6] mb-2">Beneficiary Address</label>
                 <input type="text" value={beneficiary} onChange={(e) => setBeneficiary(e.target.value)} placeholder="0x..."
-                  className="w-full px-4 py-3 bg-[#1A1A2E]/50 border border-[#2D2D3F] rounded-lg text-[#E2E8F0] font-mono placeholder-[#94A3B8]/50 focus:border-[#A855F7] focus:outline-none focus:ring-1 focus:ring-[#A855F7] transition-all" />
+                  className="w-full px-4 py-3 bg-[#2b2827]/50 border border-[#3c3836] rounded-lg text-[#ffffd6] font-mono placeholder-[#8e8c77]/50 focus:border-[#dd5807] focus:outline-none focus:ring-1 focus:ring-[#dd5807] transition-all" />
               </div>
             )}
 
             {/* Submit */}
             {/* Storage Duration */}
             <div>
-              <label className="block text-[#E2E8F0] mb-2">Storage Duration (days)</label>
+              <label className="block text-[#ffffd6] mb-2">Storage Duration (days)</label>
               <input type="number" value={storageDays} onChange={(e) => setStorageDays(e.target.value)} min={daysUntil ?? 1}
-                className="w-full px-4 py-3 bg-[#1A1A2E]/50 border border-[#2D2D3F] rounded-lg text-[#E2E8F0] focus:border-[#00F0FF] focus:outline-none focus:ring-1 focus:ring-[#00F0FF] transition-all" />
-              <p className="text-xs text-[#94A3B8] mt-1">How long the capsule data stays on Walrus. Must be ≥ unlock time ({daysUntil ?? "?"}d). 1 epoch ≈ 1 day on testnet.</p>
+                className="w-full px-4 py-3 bg-[#2b2827]/50 border border-[#3c3836] rounded-lg text-[#ffffd6] focus:border-[#c64f05] focus:outline-none focus:ring-1 focus:ring-[#c64f05] transition-all" />
+              <p className="text-xs text-[#8e8c77] mt-1">How long the capsule data stays on Walrus. Must be ≥ unlock time ({daysUntil ?? "?"}d). 1 epoch ≈ 1 day on testnet.</p>
             </div>
 
             <button type="submit" disabled={isSubmitting}
-              className="w-full px-6 py-4 bg-gradient-to-r from-[#00F0FF] to-[#A855F7] text-[#0A0A0F] rounded-lg hover:drop-shadow-[0_0_20px_rgba(0,240,255,0.8)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
-              {isSubmitting ? (<><div className="w-5 h-5 border-2 border-[#0A0A0F] border-t-transparent rounded-full animate-spin" /> {progress || "Launching..."}</>) : (<><Rocket className="w-5 h-5" /> Launch Capsule</>)}
+              className="w-full px-6 py-4 bg-gradient-to-r from-[#c64f05] to-[#dd5807] text-[#130904] rounded-lg hover:drop-shadow-[0_0_20px_rgba(198,79,5,0.8)] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed">
+              {isSubmitting ? (<><div className="w-5 h-5 border-2 border-[#130904] border-t-transparent rounded-full animate-spin" /> {progress || "Launching..."}</>) : (<><Rocket className="w-5 h-5" /> Launch Capsule</>)}
             </button>
           </form>
         </div>

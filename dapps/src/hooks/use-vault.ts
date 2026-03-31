@@ -1,12 +1,13 @@
 import { useCallback, useEffect } from "react";
 import { useQuery, useQueryClient } from "@tanstack/react-query";
 import { useCurrentAccount } from "@mysten/dapp-kit-react";
+import { useSearchParams } from "react-router";
 import {
   fetchVault,
   fetchCapsules,
-  fetchHeartbeatById,
-  findOwnedHeartbeat,
-  detectUserRole,
+  fetchHeartbeat,
+  fetchHeartbeatByVaultId,
+  detectUserVaultObjects,
   fetchGuildMembers,
   type CapsuleData,
   type VaultData,
@@ -17,12 +18,15 @@ import {
 
 export interface VaultState {
   vault: VaultData | null;
+  vaultId?: string;
   capsules: CapsuleData[];
   heartbeat: HeartbeatData | null;
+  heartbeatId?: string;
   members: GuildMember[];
   role: UserRole;
   capId?: string;
   memberCapId?: string;
+  officerCapId?: string;
   loading: boolean;
   error: string | null;
   refetch: () => void;
@@ -31,67 +35,89 @@ export interface VaultState {
 export function useVault(): VaultState {
   const account = useCurrentAccount();
   const queryClient = useQueryClient();
+  const [searchParams] = useSearchParams();
 
-  // Clear all cache when account changes
+  // Vault ID from URL param or session or auto-detect from user's heartbeat
+  const urlVaultId = searchParams.get("id") ?? undefined;
+
+  // Persist selected vault across navigation
+  useEffect(() => {
+    if (urlVaultId) sessionStorage.setItem("selectedVaultId", urlVaultId);
+  }, [urlVaultId]);
+
+  const savedVaultId = typeof window !== "undefined" ? sessionStorage.getItem("selectedVaultId") ?? undefined : undefined;
+
   useEffect(() => {
     queryClient.invalidateQueries();
   }, [account?.address, queryClient]);
 
+  // Auto-detect user's owned objects
+  const userObjQuery = useQuery({
+    queryKey: ["userObjects", account?.address],
+    queryFn: () => detectUserVaultObjects(account!.address),
+    enabled: !!account?.address,
+    staleTime: 60_000,
+  });
+
+  // Determine vault ID: URL param > saved session > user's heartbeat vault
+  const vaultId = urlVaultId ?? savedVaultId ?? userObjQuery.data?.heartbeatVaultId;
+
   const vaultQuery = useQuery({
-    queryKey: ["vault"],
-    queryFn: fetchVault,
+    queryKey: ["vault", vaultId],
+    queryFn: () => fetchVault(vaultId!),
+    enabled: !!vaultId,
     staleTime: 30_000,
   });
 
   const capsulesQuery = useQuery({
-    queryKey: ["capsules"],
-    queryFn: fetchCapsules,
+    queryKey: ["capsules", vaultId],
+    queryFn: () => fetchCapsules(vaultId!),
+    enabled: !!vaultId,
     staleTime: 30_000,
   });
 
+  const heartbeatId = userObjQuery.data?.heartbeatId;
   const heartbeatQuery = useQuery({
-    queryKey: ["heartbeat", account?.address],
+    queryKey: ["heartbeat", heartbeatId ?? vaultId],
     queryFn: async () => {
-      if (!account?.address) return null;
-      const hbId = await findOwnedHeartbeat(account.address);
-      if (!hbId) return null;
-      return fetchHeartbeatById(hbId);
+      // Try owned heartbeat first, fallback to GraphQL by vault_id
+      if (heartbeatId) return fetchHeartbeat(heartbeatId);
+      if (vaultId) return fetchHeartbeatByVaultId(vaultId);
+      return null;
     },
-    enabled: !!account?.address,
+    enabled: !!(heartbeatId || vaultId),
     staleTime: 30_000,
   });
 
-  const roleQuery = useQuery({
-    queryKey: ["role", account?.address],
-    queryFn: () => detectUserRole(account!.address),
-    enabled: !!account?.address,
-    staleTime: 60_000,
-  });
-
+  const guildId = vaultQuery.data?.guild_id;
   const membersQuery = useQuery({
-    queryKey: ["members"],
-    queryFn: fetchGuildMembers,
+    queryKey: ["members", guildId],
+    queryFn: () => fetchGuildMembers(guildId!),
+    enabled: !!guildId,
     staleTime: 60_000,
   });
 
   const refetch = useCallback(() => {
+    userObjQuery.refetch();
     vaultQuery.refetch();
     capsulesQuery.refetch();
     heartbeatQuery.refetch();
-    roleQuery.refetch();
     membersQuery.refetch();
-  }, [vaultQuery, capsulesQuery, heartbeatQuery, roleQuery, membersQuery]);
+  }, [userObjQuery, vaultQuery, capsulesQuery, heartbeatQuery, membersQuery]);
 
   return {
     vault: vaultQuery.data ?? null,
+    vaultId,
     capsules: capsulesQuery.data ?? [],
     heartbeat: heartbeatQuery.data ?? null,
+    heartbeatId: heartbeatId ?? heartbeatQuery.data?.id,
     members: membersQuery.data ?? [],
-    role: roleQuery.data?.role ?? "guest",
-    capId: roleQuery.data?.capId,
-    memberCapId: roleQuery.data?.memberCapId,
-    loading: vaultQuery.isLoading || capsulesQuery.isLoading || heartbeatQuery.isLoading,
-    error: vaultQuery.error?.message ?? capsulesQuery.error?.message ?? null,
+    role: userObjQuery.data?.role ?? "guest",
+    capId: userObjQuery.data?.capId,
+    memberCapId: userObjQuery.data?.memberCapId,
+    officerCapId: userObjQuery.data?.officerCapId,
+    loading: !vaultQuery.data && vaultQuery.isLoading,
+    error: vaultQuery.error?.message ?? null,
     refetch,
   };
 }

@@ -240,19 +240,19 @@ sui client call \
 **Testnet deployment (already deployed):**
 
 ```
-# v3 — with VaultRegistry
-VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
-VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
+# v4 — with world-contracts dependency + VaultAuth extension
+VAULT_PACKAGE_ID=0x05411bd9cd51106bb13834f17a77bdc1f454b6d48be1cfe0ebf52c5383f46fc6
+VAULT_REGISTRY_ID=0x3b57a62f7ae1e79174fc2ee748f238a154e82709bad1130b7ea2911bbe83c801
 ```
 
-Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_registry`, `vault_seal`
+Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_registry`, `vault_seal`, `vault_extension`
 
 **Interact via scripts:**
 
 ```bash
 # Add to .env
-VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
-VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
+VAULT_PACKAGE_ID=0x05411bd9cd51106bb13834f17a77bdc1f454b6d48be1cfe0ebf52c5383f46fc6
+VAULT_REGISTRY_ID=0x3b57a62f7ae1e79174fc2ee748f238a154e82709bad1130b7ea2911bbe83c801
 VAULT_OBJECT_ID=<from init-vault output>
 HEARTBEAT_OBJECT_ID=<from init-vault output>
 OFFICER_CAP_ID=<from init-vault output>
@@ -274,8 +274,8 @@ bun run vault:heartbeat
 
 ```bash
 # 1. Update dapps/.env (heartbeat + caps auto-detected from wallet)
-VITE_VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
-VITE_VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3
+VITE_VAULT_PACKAGE_ID=0x05411bd9cd51106bb13834f17a77bdc1f454b6d48be1cfe0ebf52c5383f46fc6
+VITE_VAULT_REGISTRY_ID=0x3b57a62f7ae1e79174fc2ee748f238a154e82709bad1130b7ea2911bbe83c801
 VITE_VAULT_OBJECT_ID=<from init-vault output>
 
 # 2. Start dApp
@@ -361,10 +361,10 @@ make clean                 Remove node_modules and build artifacts
 |------|---------|
 | [docker/](./docker/readme.md) | Dev container (Sui CLI + Node.js) — used by the Docker flow. |
 | [move-contracts/](./move-contracts/readme.md) | Custom Smart Assembly examples (e.g. [smart_gate_extension](./move-contracts/smart_gate_extension/)); build & publish. |
-| move-contracts/guild_time_vault/ | Guild Time Vault — time-locked capsules, role-based access, dead-man switch. |
+| move-contracts/guild_time_vault/ | Guild Time Vault — time-locked capsules, role-based access, dead-man switch, StorageUnit extension. |
 | [ts-scripts/](./ts-scripts/readme.md) | TypeScript scripts to call your contracts; run after publishing. |
 | [setup-world/](./setup-world/readme.md) | What "deploy world" does and what gets created. |
-| [dapps/](./dapps/readme.md) | Reference dApp template with Guild Vault UI (optional). |
+| [dapps/](./dapps/readme.md) | Reference dApp template with Guild Vault UI, Profile, Game Guide (optional). |
 | [zklogin/](./zklogin/readme.md) | zkLogin CLI for OAuth-based signing (optional). |
 | [docs/](./docs/) | Detailed flow guides (Docker, Host, existing world). |
 

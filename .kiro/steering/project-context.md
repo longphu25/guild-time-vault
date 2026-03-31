@@ -61,6 +61,7 @@ builder-scaffold/
 │   │   ├── claim-capsule.ts            # Claim capsule theo mode
 │   │   ├── heartbeat.ts                # Ping heartbeat (dead-man switch)
 │   │   ├── delete-capsule.ts           # Officer xóa capsule
+│   │   ├── list-vaults.ts              # Query VaultRegistry, list all vaults on-chain
 │   │   ├── vault-ids.ts                # Resolve vault object IDs từ env
 │   │   └── modules.ts                  # Module name constants
 │   ├── helpers/
@@ -159,7 +160,7 @@ builder-scaffold/
 
 ### guild_time_vault
 
-7 module, sử dụng **capability pattern** cho role-based access control + **VaultRegistry** cho on-chain vault tracking. Package address: `guild`.
+8 module, sử dụng **capability pattern** cho role-based access control + **VaultRegistry** cho on-chain vault tracking + **VaultAuth** witness cho StorageUnit extension. Package address: `guild`. Depends on `world-contracts`.
 
 #### vault_core.move
 - `VaultRegistry` (shared) — tạo tự động qua `init()` khi publish, track tất cả vaults
@@ -169,6 +170,7 @@ builder-scaffold/
 - `Heartbeat` — dead-man switch: vault_id, last_ping_ms, timeout_ms
 - Events: `CapsuleCreated`, `CapsuleClaimed`, `DeadManTriggered`, `VaultRegistered`
 - Modes: `ARCHIVE=0`, `PRIVATE_INHERIT=1`, `DEAD_MAN=2`
+- UID accessors: `borrow_uid()`, `borrow_uid_mut()` — cho dynamic field support (vault_extension)
 - Registry helpers: `register_vault`, `registry_vault_count`, `registry_vault_at`, `registry_has_vault`, `registry_entry`, `entry_*` accessors
 - Internal helpers: `new_vault`, `new_capsule`, `new_heartbeat`, `share_vault`, `transfer_heartbeat`, `destroy_capsule`
 
@@ -214,6 +216,15 @@ builder-scaffold/
 
 ### Dependency
 - `world-contracts` (local path hoặc git tag) — cung cấp `Gate`, `Character`, `StorageUnit`, `OwnerCap`, access control
+- `guild_time_vault` depends on `world-contracts` for StorageUnit extension integration via `VaultAuth` witness
+
+#### vault_extension.move (StorageUnit extension bridge)
+- `VaultAuth` — typed witness cho `storage_unit::authorize_extension<VaultAuth>`
+- `vault_auth()` — package-restricted mint
+- `link_vault(vault, officer_cap, storage_unit_id)` — officer links vault to StorageUnit via dynamic field
+- `unlink_vault(vault, officer_cap)` — unlink
+- `is_linked(vault)` / `linked_storage_unit(vault)` — view functions
+- `AssemblyLinkKey` / `AssemblyLink` — dynamic field key/value on GuildVault
 
 ---
 
@@ -324,7 +335,11 @@ EveFrontierProvider (queryClient)
 ### Components
 - **App.tsx**: Header + connect/disconnect button (`useConnection`, `useCurrentAccount`) + VaultDashboard
 - **WalletStatus.tsx**: Hiển thị connected/disconnected, address, render AssemblyInfo
+- **WalletSelectModal.tsx**: Multi-wallet selection modal (EVE Vault, Slush, others)
 - **AssemblyInfo.tsx**: `useSmartObject()` → hiển thị assembly name, type, state, ID, owner character
+- **AssemblyView.tsx**: Full assembly page + vault fallback khi không có EVE Assembly
+- **Profile.tsx**: 8-block pilot profile — wallet, EVE config, character (RPC), wallet chars, assembly, vault, heartbeat, owned objects
+- **GameGuide.tsx**: Interactive 9-step checklist deploy assembly trên Utopia sandbox, spawn commands, item reference
 
 ### Vault UI Components (dapps/src/vault/)
 - **VaultDashboard.tsx**: Tab navigation (Overview / Registry / Create / Claim / Heartbeat), hiển thị vault info qua `getObjectWithJson()`
@@ -543,16 +558,20 @@ TENANT=dev
 ### Deployed Contract IDs (Sui Testnet)
 
 ```
-# v3 — with VaultRegistry
-VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
-VAULT_REGISTRY_ID=0x50cf0531d668df9706814f2abf9d7fc632e1babfd35af0247953e8d5350a39e3   (VaultRegistry - shared, auto-created on publish)
+# v4 — with world-contracts dependency + VaultAuth extension
+VAULT_PACKAGE_ID=0x05411bd9cd51106bb13834f17a77bdc1f454b6d48be1cfe0ebf52c5383f46fc6
+VAULT_REGISTRY_ID=0x3b57a62f7ae1e79174fc2ee748f238a154e82709bad1130b7ea2911bbe83c801
+VAULT_OBJECT_ID=0xcedb883794aef569928ffee9b208d4d7f9ec199c949200ec76c3717412988d7f
 DEPLOYER_ADDRESS=0xdfdd6484f7f94c80daefbfee06728f60236fde6bc229e30453306166a6b5691e
 
-# v2 (deprecated — no VaultRegistry)
-# VAULT_PACKAGE_ID=0xde1c3361a8a70dd15d375dfa3fff1e8165f9d55b7b178964fa9a03c4e1c46ddc
+# v3 (deprecated — no world-contracts dependency)
+# VAULT_PACKAGE_ID=0x18f44ac73ab4c150c38e4f156ca26188805366ff818078237f9105d7477a06f6
+
+# EVE Frontier Utopia World Package
+EVE_WORLD_PACKAGE_ID=0xd12a70c74c1e759445d6f209b01d43d860e97fcf2ef72ccbbd00afd828043f75
 ```
 
-Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_registry`, `vault_seal`
+Modules: `vault_core`, `vault_roles`, `vault_capsule_api`, `vault_heartbeat_api`, `vault_views`, `vault_registry`, `vault_seal`, `vault_extension`
 
 ### Deploy guild_time_vault lên testnet
 

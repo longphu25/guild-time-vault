@@ -22,6 +22,8 @@ export function InitializeView() {
     setBusy(true);
     try {
       const tx = new Transaction();
+      tx.setSender(account.address);
+      tx.setGasBudget(50_000_000);
       tx.moveCall({
         target: TARGET,
         arguments: [

@@ -105,6 +105,14 @@ export function useVault(): VaultState {
     membersQuery.refetch();
   }, [userObjQuery, vaultQuery, capsulesQuery, heartbeatQuery, membersQuery]);
 
+  // Filter caps by current vault's guild_id
+  const vaultGuildId = vaultQuery.data?.guild_id;
+  const userObj = userObjQuery.data;
+  const matchedOfficerCap = userObj?.officerCaps.find((c) => c.guildId === vaultGuildId);
+  const matchedMemberCap = userObj?.memberCaps.find((c) => c.guildId === vaultGuildId);
+  const effectiveRole: UserRole = matchedOfficerCap ? "officer" : matchedMemberCap ? "member" : "guest";
+  const effectiveCapId = matchedOfficerCap?.id ?? matchedMemberCap?.id;
+
   return {
     vault: vaultQuery.data ?? null,
     vaultId,
@@ -112,11 +120,11 @@ export function useVault(): VaultState {
     heartbeat: heartbeatQuery.data ?? null,
     heartbeatId: heartbeatId ?? heartbeatQuery.data?.id,
     members: membersQuery.data ?? [],
-    role: userObjQuery.data?.role ?? "guest",
-    capId: userObjQuery.data?.capId,
-    memberCapId: userObjQuery.data?.memberCapId,
-    officerCapId: userObjQuery.data?.officerCapId,
-    loading: !vaultQuery.data && vaultQuery.isLoading,
+    role: effectiveRole,
+    capId: effectiveCapId,
+    memberCapId: matchedMemberCap?.id,
+    officerCapId: matchedOfficerCap?.id,
+    loading: (!!vaultId && vaultQuery.isLoading) || (!!vaultId && capsulesQuery.isLoading),
     error: vaultQuery.error?.message ?? null,
     refetch,
   };

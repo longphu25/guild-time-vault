@@ -25,8 +25,8 @@ function parseSealPolicy(c: CapsuleData) {
 
 const modeLabel = (m: number) => m === 0 ? "ARCHIVE" : m === 1 ? "PRIVATE INHERIT" : "DEAD MAN";
 
-function CapsuleCard({ capsule, onSelect, hasMemberCap }: {
-  capsule: CapsuleData; onSelect?: (id: number) => void; hasMemberCap?: boolean;
+function CapsuleCard({ capsule, onSelect, hasMemberCap, userAddr }: {
+  capsule: CapsuleData; onSelect?: (id: number) => void; hasMemberCap?: boolean; userAddr?: string;
 }) {
   const now = Date.now();
   const unlockable = !capsule.claimed && now >= capsule.unlock_time_ms;
@@ -34,7 +34,8 @@ function CapsuleCard({ capsule, onSelect, hasMemberCap }: {
   const zeroBenef = "0x0000000000000000000000000000000000000000000000000000000000000000";
 
   const status = capsule.claimed ? "CLAIMED" : unlockable ? "UNLOCKABLE" : "LOCKED";
-  const canClaim = unlockable && (capsule.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap : capsule.mode === CAPSULE_MODE.PRIVATE_INHERIT ? true : false);
+  const isBeneficiary = capsule.mode === CAPSULE_MODE.PRIVATE_INHERIT && userAddr && capsule.beneficiary === userAddr;
+  const canClaim = unlockable && (capsule.mode === CAPSULE_MODE.ARCHIVE ? hasMemberCap : capsule.mode === CAPSULE_MODE.PRIVATE_INHERIT ? isBeneficiary : false);
 
   const statusColor = status === "UNLOCKABLE" ? "text-secondary border-secondary/30" : status === "LOCKED" ? "text-secondary border-secondary/30" : "text-on-surface-variant border-on-surface-variant/20";
   const StatusIcon = status === "UNLOCKABLE" ? BookOpen : status === "CLAIMED" ? CheckCircle2 : Lock;
@@ -186,14 +187,27 @@ export function VaultView() {
       </section>
 
       {loading ? (
-        <div className="text-center py-20 text-on-surface-variant font-headline uppercase tracking-widest text-sm">Loading capsules...</div>
+        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
+          {Array.from({ length: 4 }).map((_, i) => (
+            <div key={i} className="glass-panel border border-primary/10 p-6 h-64 animate-pulse">
+              <div className="flex justify-between mb-6">
+                <div className="h-5 w-20 bg-on-surface-variant/10" />
+                <div className="h-5 w-5 bg-on-surface-variant/10 rounded-full" />
+              </div>
+              <div className="h-3 w-16 bg-on-surface-variant/10 mb-2" />
+              <div className="h-5 w-32 bg-on-surface-variant/10 mb-6" />
+              <div className="h-3 w-full bg-on-surface-variant/10 mb-2" />
+              <div className="h-3 w-2/3 bg-on-surface-variant/10" />
+            </div>
+          ))}
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-20 text-on-surface-variant font-headline uppercase tracking-widest text-sm">No capsules found</div>
       ) : (
         <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-6">
           {filtered.map((c) => (
             <CapsuleCard key={c.capsule_id} capsule={c} onSelect={setSelectedId}
-              hasMemberCap={!!memberCapId} />
+              hasMemberCap={!!memberCapId} userAddr={account?.address} />
           ))}
         </div>
       )}

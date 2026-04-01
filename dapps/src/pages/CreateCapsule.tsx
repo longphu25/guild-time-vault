@@ -20,9 +20,16 @@ const MODES = [
 export function CreateCapsule() {
   const navigate = useNavigate();
   const dAppKit = useDAppKit();
-  const { signAndExecuteTransaction } = dAppKit;
+  const { signAndExecuteTransaction: _signAndExec } = dAppKit;
   const account = useCurrentAccount();
   const { role, capId, vault, vaultId, refetch } = useVault();
+
+  // Wrap signAndExecute with timeout to handle extension hangs (CORS, popup closed)
+  const signAndExecuteTransaction: typeof _signAndExec = (args) =>
+    Promise.race([
+      _signAndExec(args),
+      new Promise((_, reject) => setTimeout(() => reject(new Error("Transaction approval timed out")), 60_000)),
+    ]) as ReturnType<typeof _signAndExec>;
 
   const [message, setMessage] = useState("");
   const [unlockDate, setUnlockDate] = useState("");
@@ -131,13 +138,24 @@ export function CreateCapsule() {
       setModalFinished(true);
       refetch();
     } catch (err: unknown) {
-      const msg = err instanceof Error ? err.message : "Transaction failed";
+      const msg = err instanceof Error ? err.message : typeof err === "string" ? err : String(err ?? "Transaction failed");
       const cancelled = msg.includes("rejected") || msg.includes("denied") || msg.includes("cancel");
-      // Mark current loading step as error
-      setSteps((prev) => prev.map((s) => s.status === "loading" ? { ...s, status: "error" } : s));
+      setSteps((prev) => {
+        const hasLoading = prev.some((s) => s.status === "loading");
+        if (!hasLoading) return prev; // already marked
+        return prev.map((s) => s.status === "loading" ? { ...s, status: "error" } : s);
+      });
       setModalError(cancelled ? "Transaction cancelled by user" : msg);
     } finally {
       setIsSubmitting(false);
+      // Safety: if modal still open with no result, allow closing
+      if (!modalFinished) {
+        setSteps((prev) => {
+          const hasLoading = prev.some((s) => s.status === "loading");
+          if (hasLoading) return prev.map((s) => s.status === "loading" ? { ...s, status: "error" } : s);
+          return prev;
+        });
+      }
     }
   };
 

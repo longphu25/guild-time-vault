@@ -10,6 +10,7 @@
 
 import { SealClient, SessionKey, type SealCompatibleClient } from "@mysten/seal";
 import { SuiGrpcClient } from "@mysten/sui/grpc";
+import { SuiGraphQLClient } from "@mysten/sui/graphql";
 import { Transaction } from "@mysten/sui/transactions";
 import { bcs } from "@mysten/sui/bcs";
 import { toHex } from "@mysten/sui/utils";
@@ -26,6 +27,12 @@ const SUI_CLOCK = "0x6";
 const suiClient: SealCompatibleClient = new SuiGrpcClient({
   network: "testnet",
   baseUrl: "https://fullnode.testnet.sui.io:443",
+});
+
+// GraphQL client for zkLogin signature verification
+const graphqlClient: SealCompatibleClient = new SuiGraphQLClient({
+  url: "https://graphql.testnet.sui.io/graphql",
+  network: "testnet",
 });
 
 let _sealClient: SealClient | null = null;
@@ -99,7 +106,9 @@ export async function sealDecrypt(
   });
 
   const message = sessionKey.getPersonalMessage();
-  const { signature } = await signPersonalMessage({ message });
+  const result = await signPersonalMessage({ message });
+  const signature = typeof result === "string" ? result : result?.signature;
+  if (!signature) throw new Error("Wallet returned empty signature for personal message");
   sessionKey.setPersonalMessageSignature(signature);
 
   // Build seal_approve tx based on mode

@@ -62,6 +62,8 @@ export interface UserVaultObjects {
   officerCapId?: string;
   heartbeatId?: string;
   heartbeatVaultId?: string;
+  officerCaps: { id: string; guildId: string }[];
+  memberCaps: { id: string; guildId: string }[];
 }
 
 // ── Helpers ──
@@ -134,15 +136,13 @@ export async function detectUserVaultObjects(address: string): Promise<UserVault
   let heartbeatId: string | undefined;
   let heartbeatVaultId: string | undefined;
 
-  const officerRes = await client.listOwnedObjects({ owner: address, type: TYPES.officerCap, limit: 1, include: { json: true } });
-  if (officerRes.objects?.length > 0) {
-    officerCapId = officerRes.objects[0].objectId;
-  }
+  const officerRes = await client.listOwnedObjects({ owner: address, type: TYPES.officerCap, limit: 10, include: { json: true } });
+  const officerCaps = (officerRes.objects ?? []).map((o: any) => ({ id: o.objectId, guildId: o.json?.guild_id as string }));
+  if (officerCaps.length > 0) officerCapId = officerCaps[0].id;
 
-  const memberRes = await client.listOwnedObjects({ owner: address, type: TYPES.memberCap, limit: 1 });
-  if (memberRes.objects?.length > 0) {
-    memberCapId = memberRes.objects[0].objectId;
-  }
+  const memberRes = await client.listOwnedObjects({ owner: address, type: TYPES.memberCap, limit: 10, include: { json: true } });
+  const memberCaps = (memberRes.objects ?? []).map((o: any) => ({ id: o.objectId, guildId: o.json?.guild_id as string }));
+  if (memberCaps.length > 0) memberCapId = memberCaps[0].id;
 
   const hbRes = await client.listOwnedObjects({ owner: address, type: TYPES.heartbeat, limit: 1, include: { json: true } });
   if (hbRes.objects?.length > 0) {
@@ -151,7 +151,7 @@ export async function detectUserVaultObjects(address: string): Promise<UserVault
   }
 
   const role: UserRole = officerCapId ? "officer" : memberCapId ? "member" : "guest";
-  return { role, capId: officerCapId ?? memberCapId, memberCapId, officerCapId, heartbeatId, heartbeatVaultId };
+  return { role, capId: officerCapId ?? memberCapId, memberCapId, officerCapId, heartbeatId, heartbeatVaultId, officerCaps, memberCaps };
 }
 
 /** Fetch all vaults — from VaultRegistry if populated, fallback GraphQL */
